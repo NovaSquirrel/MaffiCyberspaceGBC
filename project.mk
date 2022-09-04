@@ -10,10 +10,10 @@ PADVALUE := 0xFF
 VERSION := 0
 
 # 4-ASCII letter game ID
-GAMEID := BOIL
+GAMEID := MAFF
 
 # Game title, up to 11 ASCII chars
-TITLE := BOILERPLATE
+TITLE := "MAFFI MAZE!"
 
 # New licensee, 2 ASCII chars
 # Homebrew games FTW!
@@ -34,8 +34,8 @@ MBC := 0x00
 SRAMSIZE := 0x00
 
 # ROM name
-ROMNAME := boilerplate
-ROMEXT  := gb
+ROMNAME := maffigame
+ROMEXT  := gbc
 
 
 # Compilation parameters, uncomment to apply, comment to cancel
@@ -63,4 +63,4 @@ ASFLAGS += -h
 # LDFLAGS += -w
 
 # 32k mode
-# LDFLAGS += -t
+LDFLAGS += -t

@@ -1,3 +1,4 @@
+include "include/hardware.inc/hardware.inc"
 
 SECTION "Header", ROM0[$100]
 
@@ -17,5 +18,26 @@ SECTION "Header", ROM0[$100]
 SECTION "Entry point", ROM0
 
 EntryPoint:
+	ld sp, Playfield
+
+	ld a, %11100100
+	ldh [rBGP], a
+
+	ld a, 1
+	ldh [seed], a
+	inc a
+	ldh [seed+1], a
+	inc a
+	ldh [seed+2], a
+	inc a
+	ldh [seed+3], a
+	ld bc, 1234
+	call SeedRandomLCG
+
+	call GenerateMaze
+
+	ld a, %00011011
+	ldh [rBGP], a
+
 	; Here is where the fun begins, happy coding :)
 	jr @
