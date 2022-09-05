@@ -72,29 +72,143 @@ NextColumn:
 	call FloodFillPlayfield
 
 	; -----------------------------------------------------
-	; Count the floors
+	; Fix unsolveable mazes
+	; -----------------------------------------------------
+
+	; Try it forward
+
+	ld hl, Playfield
+FixMazeForward:
+	ld a, [hl+]
+	dec a ; Test for 1 (which is T_FLOOR)
+	jr nz, :+
+		push hl
+		call FixUnvisitedFloor
+		pop hl
+	:
+	ld a, h
+	cp HIGH(PlayfieldEnd)
+	jr nz, FixMazeForward
+
+	; Try it backward too
+
+	ld hl, PlayfieldEnd-1
+FixMazeBackward:
+	ld a, [hl-]
+	dec a ; Test for 1 (which is T_FLOOR)
+	jr nz, :+
+		push hl
+		call FixUnvisitedFloor
+		pop hl
+	:
+	ld a, h
+	cp HIGH(Playfield-1)
+	jr nz, FixMazeBackward
+
+	; -----------------------------------------------------
+	; Has the maze been fixed well enough?
 	; -----------------------------------------------------
 
 	ld hl, Playfield
 	ld bc, 0 ; Floor counter
-	ld de, 0 ; Visited counter
+	;ld de, 0 ; Visited counter
 CountVisitedUnvisited:
 	ld a, [hl+]
 	dec a ; Test for 1
 	jr nz, :+
 		inc bc ; Add a non-visited floor
 	:
-	add a,a
-	jr nc, :+
-		inc de ; Add a visited floor
-	:
+	;add a,a
+	;jr nc, :+
+	;	inc de ; Add a visited floor
+	;:
 	ld a, h
 	cp HIGH(PlayfieldEnd)
 	jr nz, CountVisitedUnvisited
 
-	ld b,b
-
 	ret
+
+; -----------------------------------------------------------------------------
+
+; Try to fix 
+FixUnvisitedFloor:
+	; Use a different order sometimes to mix things up
+	bit 1, l
+	jr z, .alternate_order
+
+	; Left
+	ld a, l
+	dec l
+	dec l
+	bit 7, [hl]
+	jr nz, .fix_left
+
+	; Right
+	ld l, a
+	inc l
+	inc l
+	bit 7, [hl]
+	jr nz, .fix_right
+
+	; Down
+	ld de, -2+64+64
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_down
+
+	; Up
+	ld de, -64-64-64-64
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_up
+	ret
+
+.alternate_order:
+	; Up
+	ld de, -64-64
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_up
+
+	; Down
+	ld de, 64+64+64+64
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_down
+
+	; Right
+	ld de, -64-64+2
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_right
+
+	; Left
+	dec l
+	dec l
+	dec l
+	dec l
+	bit 7, [hl]
+	jr nz, .fix_left
+	ret
+
+.fix_left:
+	inc l
+	ld [hl], T_FLOOR
+	jp FloodFillPlayfield
+.fix_right:
+	dec l
+	ld [hl], T_FLOOR
+	jp FloodFillPlayfield
+.fix_down:
+	ld de, -64
+	add hl, de
+	ld [hl], T_FLOOR
+	jp FloodFillPlayfield
+.fix_up:
+	ld de, 64
+	add hl, de
+	ld [hl], T_FLOOR
+	jp FloodFillPlayfield
 
 ; Add a wall at [HL] and put a block in a random direction
 AddWallHere:
