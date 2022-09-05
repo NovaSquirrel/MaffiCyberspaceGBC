@@ -1,5 +1,10 @@
 SECTION "Maze", ROM0
 
+T_EMPTY   = 0
+T_FLOOR   = 1
+T_WALL    = 2
+FLOOD_VISITED = 128
+
 GenerateMaze::
 	; Clear the playfield first
 	ld hl, Playfield
@@ -10,14 +15,17 @@ GenerateMaze::
 	jr nz, :-
 
 	; Create a big space to put walls on
-	ld a, 1
+	ld a, T_FLOOR
+;	ld b, 12
+;	ld c, 12
 	ld b, 48
 	ld c, 48
+
 	ld d, 8
 	ld e, 8
 	call RectFill
 
-	ld a, 1
+	ld a, T_FLOOR
 	ld b, 10
 	ld c, 10
 	ld d, 2
@@ -78,14 +86,22 @@ NextColumn:
 	cp HIGH(PlayfieldEnd)
 	jr nz, :--
 
-	ld b,b
+	; -----------------------------------------------------
+	; Flood fill time
+	; -----------------------------------------------------
+
+	ld d, 10
+	ld e, 10
+	call MapPointerDE_XY
+	ld [hl], T_FLOOR
+	call FloodFillPlayfield
 
 	ret
 
-
+; Add a wall at [HL] and put a block in a random direction
 AddWallHere:
-	; Place a wall there
-	ld [hl], 2
+	; Place a wall at [HL]
+	ld [hl], T_WALL
 
 	; Choose a direction to go from here
 	call RandomByte
@@ -93,7 +109,7 @@ AddWallHere:
 	jr nz, .notLeft
 	; A = 0 : Left
 	dec l
-	ld [hl], 2
+	ld [hl], T_WALL
 	inc l
 	ret
 .notLeft:
@@ -103,7 +119,7 @@ AddWallHere:
 	push hl
 	ld de, -64
 	add hl, de
-	ld [hl], 2
+	ld [hl], T_WALL
 	pop hl
 	ret
 .notUp:
@@ -113,14 +129,111 @@ AddWallHere:
 	push hl
 	ld de, 64
 	add hl, de
-	ld [hl], 2
+	ld [hl], T_WALL
 	pop hl
 	ret
 .notDown:
 	; A = 3 : Right
 	inc l
-	ld [hl], 2
+	ld [hl], T_WALL
 	dec l
+	ret
+
+
+; HL = Playfield position
+; DE = Queue pointer
+FloodFillAddToQueue:
+	set 7, [hl]
+
+	; Write to the queue
+	ld a, h
+	ld [de], a ; FloodQueueHi
+	inc d
+	ld a, l
+	ld [de], a ; FloodQueueLo
+	dec d
+
+	; Next entry
+	inc e
+
+	; Are we out of space?
+	ldh a, [FloodFillReadIndex]
+	cp e
+	ret nz
+	ld b,b
+	ret
+
+
+; HL = Playfield position
+FloodFillPlayfield:
+	xor a
+	ldh [FloodFillReadIndex], a  ; Starts at zero - read the first byte
+	inc a
+	ldh [FloodFillWriteIndex], a ; Will be 1 after the first byte is written
+
+	ld de, FloodQueueHi          ; D will point at FloodQueueHi and FloodQueueLo
+	call FloodFillAddToQueue     ; Start off the buffer with the initial position
+	ld e, 0                      ; Go into the loop reading the first byte
+
+.loop:
+	; Read pointer from the queue
+	ld a, [de]
+	ld h, a
+	inc d
+	ld a, [de]
+	ld l, a
+	dec d
+
+	; Switch to the write index
+	push de
+	ldh a, [FloodFillWriteIndex]
+	ld e, a
+
+	; Left
+	dec l
+	ld a, [hl]
+	cp T_FLOOR
+	call z, FloodFillAddToQueue
+	inc l
+
+	; Right
+	inc l
+	ld a, [hl]
+	cp T_FLOOR
+	call z, FloodFillAddToQueue
+	dec l
+
+	; Up
+	push hl
+	push hl
+	ld bc, -64
+	add hl, bc
+	ld a, [hl]
+	cp T_FLOOR
+	call z, FloodFillAddToQueue
+	pop hl
+
+	; Down
+	ld bc, 64
+	add hl, bc
+	ld a, [hl]
+	cp T_FLOOR
+	call z, FloodFillAddToQueue
+	pop hl
+
+	; Write the new write index
+	ld a, e
+	ldh [FloodFillWriteIndex],a
+	ld b, a ; Hold onto the write index
+	pop de
+
+	; Read the next index - is it the same as the write one?
+	inc e
+	ld a, e
+	ldh [FloodFillReadIndex], a ; So that running out of space can be detected
+	cp b
+	jr nz, .loop
+
 	ret
 
 
