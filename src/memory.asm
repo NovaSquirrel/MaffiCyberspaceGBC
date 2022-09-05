@@ -8,8 +8,6 @@ temp5:: ds 1
 temp6:: ds 1
 temp7:: ds 1
 temp8:: ds 1
-FloodFillReadIndex:: ds 1
-FloodFillWriteIndex:: ds 1
 
 SECTION "BSS", WRAM0
 

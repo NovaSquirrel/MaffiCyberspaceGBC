@@ -5,6 +5,10 @@ T_FLOOR   = 1
 T_WALL    = 2
 FLOOD_VISITED = 128
 
+def FloodFillReadIndex  equs "temp1"
+def FloodFillWriteIndex equs "temp2"
+def RectFillValue       equs "temp3"
+
 GenerateMaze::
 	; Clear the playfield first
 	ld hl, Playfield
@@ -27,6 +31,8 @@ GenerateMaze::
 	; -----------------------------------------------------
 
 	ld hl, Playfield+64+1
+    ; B is free for another parameter
+	ld c, 64 ; Wall chance
 AddWalls:
     ; Don't try to place walls in the void
 	ld a, [hl]
@@ -35,9 +41,8 @@ AddWalls:
 
 	; Skip this wall?
 	call RandomByte
-	and 3
-	cp 0
-	call nz, AddWallHere
+	cp c
+	call nc, AddWallHere
 .skip:
     ; Move down two rows
 	ld a, l
@@ -368,12 +373,12 @@ MapPointerDE_XY:
 
 ; Inputs: A(Type), B(Width), C(Height), D(X), E(Y)
 RectFill:
-	ldh [temp1], a
+	ldh [RectFillValue], a
 	call MapPointerDE_XY
 .another_row:
 	push hl
 	push bc
-	ldh a, [temp1]
+	ldh a, [RectFillValue]
 .row:
 	ld [hl+], a
 	dec b
