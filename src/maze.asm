@@ -16,20 +16,10 @@ GenerateMaze::
 
 	; Create a big space to put walls on
 	ld a, T_FLOOR
-;	ld b, 12
-;	ld c, 12
-	ld b, 48
-	ld c, 48
-
-	ld d, 8
-	ld e, 8
-	call RectFill
-
-	ld a, T_FLOOR
-	ld b, 10
-	ld c, 10
-	ld d, 2
-	ld e, 2
+	ld b, 56
+	ld c, 56
+	ld d, 4
+	ld e, 4
 	call RectFill
 
 	; -----------------------------------------------------
@@ -72,21 +62,6 @@ NextColumn:
 	jr nz, AddWalls
 
 	; -----------------------------------------------------
-	; Count the floors
-	; -----------------------------------------------------
-
-	ld hl, Playfield
-	ld bc, 0 ; Floor counter
-:	ld a, [hl+]
-	dec a ; Test for 1
-	jr nz, :+
-		inc bc ; Add a floor
-	:
-	ld a, h
-	cp HIGH(PlayfieldEnd)
-	jr nz, :--
-
-	; -----------------------------------------------------
 	; Flood fill time
 	; -----------------------------------------------------
 
@@ -95,6 +70,29 @@ NextColumn:
 	call MapPointerDE_XY
 	ld [hl], T_FLOOR
 	call FloodFillPlayfield
+
+	; -----------------------------------------------------
+	; Count the floors
+	; -----------------------------------------------------
+
+	ld hl, Playfield
+	ld bc, 0 ; Floor counter
+	ld de, 0 ; Visited counter
+CountVisitedUnvisited:
+	ld a, [hl+]
+	dec a ; Test for 1
+	jr nz, :+
+		inc bc ; Add a non-visited floor
+	:
+	add a,a
+	jr nc, :+
+		inc de ; Add a visited floor
+	:
+	ld a, h
+	cp HIGH(PlayfieldEnd)
+	jr nz, CountVisitedUnvisited
+
+	ld b,b
 
 	ret
 
