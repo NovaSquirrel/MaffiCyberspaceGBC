@@ -1,8 +1,27 @@
+include "macros.inc"
+
 SECTION "Maze", ROM0
 
-T_EMPTY   = 0
-T_FLOOR   = 1
-T_WALL    = 2
+	enum_start
+	enum_elem T_EMPTY
+	enum_elem T_FLOOR
+	enum_elem T_WALL
+	enum_elem T_WALL____U
+	enum_elem T_WALL___D_
+	enum_elem T_WALL___DU
+	enum_elem T_WALL__R__
+	enum_elem T_WALL__R_U
+	enum_elem T_WALL__RD_
+	enum_elem T_WALL__RDU
+	enum_elem T_WALL_L___
+	enum_elem T_WALL_L__U
+	enum_elem T_WALL_l_D_
+	enum_elem T_WALL_L_DU
+	enum_elem T_WALL_LR__
+	enum_elem T_WALL_LR_U
+	enum_elem T_WALL_LRD_
+	enum_elem T_WALL_LRDU
+
 FLOOD_VISITED = 128
 
 def FloodFillReadIndex  equs "temp1"
@@ -13,7 +32,9 @@ GenerateMaze::
 	; Clear the playfield first
 	ld hl, Playfield
 :	xor a
+	rept 8
 	ld [hl+], a
+	endr
 	ld a, h
 	cp HIGH(PlayfieldEnd)
 	jr nz, :-
@@ -84,6 +105,7 @@ NextColumn:
 
 	ld hl, Playfield
 FixMazeForward:
+	rept 4
 	ld a, [hl+]
 	dec a ; Test for 1 (which is T_FLOOR)
 	jr nz, :+
@@ -91,6 +113,7 @@ FixMazeForward:
 		call FixUnvisitedFloor
 		pop hl
 	:
+	endr
 	ld a, h
 	cp HIGH(PlayfieldEnd)
 	jr nz, FixMazeForward
@@ -99,6 +122,7 @@ FixMazeForward:
 
 	ld hl, PlayfieldEnd-1
 FixMazeBackward:
+	rept 4
 	ld a, [hl-]
 	dec a ; Test for 1 (which is T_FLOOR)
 	jr nz, :+
@@ -106,6 +130,7 @@ FixMazeBackward:
 		call FixUnvisitedFloor
 		pop hl
 	:
+	endr
 	ld a, h
 	cp HIGH(Playfield-1)
 	jr nz, FixMazeBackward
@@ -119,6 +144,33 @@ FixMazeBackward:
 	;ld de, 0 ; Visited counter
 CountVisitedUnvisited:
 	ld a, [hl+]
+	cp T_WALL
+
+	jr nz, :+
+		push bc
+		push hl
+
+		ld c, 0 ; Walls
+		dec l
+		call IsWallAutotile ; Left
+		inc l
+		inc l
+		call IsWallAutotile ; Right
+		ld de, -1+64
+		add hl, de
+		call IsWallAutotile ; Down
+		ld de, -64-64
+		add hl, de
+		call IsWallAutotile ; Up
+
+		pop hl
+		; Store the modified wall
+		ld a, T_WALL
+		add c
+		ld [hl], a
+		pop bc
+		jr .skip
+	:
 	dec a ; Test for 1
 	jr nz, :+
 		inc bc ; Add a non-visited floor
@@ -127,6 +179,7 @@ CountVisitedUnvisited:
 	;jr nc, :+
 	;	inc de ; Add a visited floor
 	;:
+.skip:
 	ld a, h
 	cp HIGH(PlayfieldEnd)
 	jr nz, CountVisitedUnvisited
@@ -135,7 +188,20 @@ CountVisitedUnvisited:
 
 ; -----------------------------------------------------------------------------
 
-; Try to fix 
+; Helper for the wall autotiling
+IsWallAutotile:
+	ld a, [hl]
+	cp T_WALL
+	jr c, :+
+	cp T_WALL_LRDU+1
+	rl c
+	ret ; NC if >=
+        ; C if  <
+:	or a ; Clear carry
+	rl c
+	ret
+
+; Try to fix a floor tile that wasn't reached by connecting it to a visited tile 2 tiles away
 FixUnvisitedFloor:
 	; Use a different order sometimes to mix things up
 	bit 1, l
