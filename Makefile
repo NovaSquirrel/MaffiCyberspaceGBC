@@ -30,6 +30,7 @@ RGBDS   :=
 RGBASM  := $(RGBDS)rgbasm
 RGBLINK := $(RGBDS)rgblink
 RGBFIX  := $(RGBDS)rgbfix
+RGBGFX  := $(RGBDS)rgbgfx
 
 ROM = $(BINDIR)/$(ROMNAME).$(ROMEXT)
 
@@ -111,9 +112,13 @@ VPATH := src
 
 # Define how to compress files using the PackBits16 codec
 # Compressor script requires Python 3
-res/%.pb16: src/tools/pb16.py res/%
+res/%.pb16: src/tools/pb16.py res/%.2bpp
 	@$(MKDIR_P) $(@D)
 	$^ $@
+
+res/tilesets/%.2bpp: res/tilesets/%.png
+	@$(MKDIR_P) $(@D)
+	$(RGBGFX) -o $@ $<
 
 # Catch non-existent files
 # KEEP THIS LAST!!

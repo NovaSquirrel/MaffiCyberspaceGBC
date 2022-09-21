@@ -8,8 +8,16 @@ temp5:: ds 1
 temp6:: ds 1
 temp7:: ds 1
 temp8:: ds 1
+IsGameBoyColor:: ds 1
+framecount:: ds 1
+RunOamDMA::  ds 8 ; OAM DMA routine
+OamWrite:: ds 1 ; OAM write pointer
+KeyDown:: ds 1
+KeyLast:: ds 1
+KeyNew::  ds 1
 
 SECTION "BSS", WRAM0
+KeyRepeat:: ds 1
 
 
 SECTION "Queue", WRAM0, ALIGN[8]
