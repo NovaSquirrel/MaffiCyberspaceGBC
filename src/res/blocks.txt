@@ -1,0 +1,212 @@
+alias bg_tiles $9000
+
+alias terrain_palette 0
+alias purple_palette 1
+alias blue_palette 2
+alias orange_palette 3
+alias parallax_palette 7
+
+#######################################
+# Floor and walls
+#######################################
+base bg_tiles
+
+palette parallax_palette
+
++Empty
+solid
+q 0,0
+
+palette terrain_palette
+
++Floor
+q 0,2
+
++Wall
+solid
+q 4,0
+
++Wall____U
+solid
+t 12,0 13,0
+t 6,0 7,0
+
++Wall___D_
+solid
+t 4,0 5,0
+t 12,0 13,0
+
++Wall___DU
+solid
+t 12,0 13,0
+t 12,0 13,0
+
++Wall__R__
+solid
+t 4,0 14,0
+t 6,0 15,0
+
++Wall__R_U
+solid
+t 12,0 10,0
+t 6,0 15,0
+
++Wall__RD_
+solid
+t 4,0 14,0
+t 12,0 8,0
+
++Wall__RDU
+solid
+t 12,0 10,0
+t 12,0 8,0
+
++Wall_L___
+solid
+t 14,0 5,0
+t 15,0 7,0
+
++Wall_L__U
+solid
+t 11,0 13,0
+t 15,0 7,0
+
++Wall_L_D_
+solid
+t 14,0 5,0
+t 9,0 13,0
+
++Wall_L_DU
+solid
+t 11,0 13,0
+t 9,0 13,0
+
++Wall_LR__
+solid
+t 14,0 15,0
+t 14,0 15,0
+
++Wall_LR_U
+solid
+t 11,0 10,0
+t 15,0 15,0
+
++Wall_LRD_
+solid
+t 14,0 14,0
+t 9,0 8,0
+
++Wall_LRDU
+solid
+t 11,0 10,0
+t 9,0 8,0
+
+#######################################
+# More tiles
+#######################################
+
++Bricks
+palette blue_palette
+solid
+q 0,3
+
++BricksCracked
+palette blue_palette
+solid
+q 4,3
+
++PrizeAnimation1
+palette purple_palette
+solid
+q 4,1
+
++PrizeAnimation2
+palette terrain_palette
+solid
+q 8,1
+
++UsedPrize
+palette terrain_palette
+solid
+q 12,1
+
+#######################################
+# Special floors
+#######################################
+
+marker Collectible
+marker SpecialFloor
+
++Star
+palette terrain_palette
+When Above, RunBlockStar
+q 4,2
+
++Heart
+palette terrain_palette
+When Above, RunBlockHeart
+q 8,2
+
++Dot
+palette terrain_palette
+When Above, RunBlockDot
+q 12,2
+
++Key
+palette purple_palette
+When Above, RunBlockKey
+q 8,4
+
+marker EndCollectible
+
++Teleporter
+palette blue_palette
+When Above, RunBlockTeleporter
+q 8,3
+
++Exit
+palette blue_palette
+When Above, RunBlockExit
+q 12,3
+
++Spring
+palette blue_palette
+When Above, RunBlockSpring
+q 0,4
+
++ToggleButton
+palette purple_palette
+When Above, RunBlockToggleButton
+q 4,5
+
++Fire
+palette orange_palette
+When Above, RunBlockFire
+q 4,4
+
++Bomb
+palette orange_palette
+When Above, RunBlockBomb
+q 0,5
+
+marker EndSpecialFloor
+
+#######################################
+# Special walls
+#######################################
+
+marker SpecialWall
+
++Lock
+solid
+When Side, RunBlockLock
+palette purple_palette
+q 12,4
+
++Prize
+palette purple_palette
+When Side, RunBlockPrize
+solid
+q 0,1
+
+marker EndSpecialWall

@@ -120,6 +120,10 @@ res/tilesets/%.2bpp: res/tilesets/%.png
 	@$(MKDIR_P) $(@D)
 	$(RGBGFX) -o $@ $<
 
+res/blockdata.asm res/blockenum.inc: src/tools/makeblocks.py res/blocks.txt
+	@$(MKDIR_P) $(@D)
+	$^ res/blockdata.asm res/blockenum.inc
+
 # Catch non-existent files
 # KEEP THIS LAST!!
 %:
