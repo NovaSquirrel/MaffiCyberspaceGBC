@@ -101,7 +101,7 @@ for line in text:
 		name, value = separateFirstWord(arg)
 		aliases[name] = value
 	elif word == "marker":
-		all_markers[arg] = len(all_blocks)
+		all_markers[arg] = len(all_blocks) + 1
 
 	# Tile info shared with several blocks
 	elif word == "base":
