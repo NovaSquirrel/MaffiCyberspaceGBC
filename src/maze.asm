@@ -166,6 +166,7 @@ CountVisitedUnvisited:
 	jr nz, :+
 		push bc
 		push hl
+		dec l ; Undo the hl+
 
 		ld c, 0 ; Walls
 		dec l
@@ -184,7 +185,8 @@ CountVisitedUnvisited:
 		; Store the modified wall
 		ld a, T_WALL
 		add c
-		ld [hl], a
+		dec l
+		ld [hl+], a
 		pop bc
 		jr .skip
 	:

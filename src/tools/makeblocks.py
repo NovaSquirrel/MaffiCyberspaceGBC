@@ -146,12 +146,14 @@ outfile = open(block_data_filename, "w")
 
 outfile.write('; This is automatically generated. Edit "%s" instead\n' % block_definition_filename)
 outfile.write('include "res/blockenum.inc"\n\n')
-outfile.write('\nSECTION "BlockData", ROM0\n\n')
+outfile.write('\nSECTION "BlockAppearance", ROM0, ALIGN[8]\n\n')
 
 # Block appearance information
 outfile.write('BlockAppearance::\n')
 for b in all_blocks:
 	outfile.write('\tdb $%.2x, $%.2x, $%.2x, $%.2x ; %s\n' % (b['tiles'][0] & 255, b['tiles'][1] & 255, b['tiles'][2] & 255, b['tiles'][3] & 255, b['name']))
+
+outfile.write('\nSECTION "BlockData", ROM0, ALIGN[4]\n\n')
 
 outfile.write('BlockAppearanceColor::\n')
 for b in all_blocks:

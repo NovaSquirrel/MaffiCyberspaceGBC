@@ -102,10 +102,134 @@ EntryPoint:
 
 	call GenerateMaze
 
-	ld a, %00011011
-	ldh [rBGP], a
+;	ld a, %00011011
+;	ldh [rBGP], a
 
 	; Here is where the fun begins, happy coding :)
+
+	call ClearAndWriteOAM
+
+	call ScreenOn
+;forever:
+	call wait_vblank
+
+	ld a, OamBuffer>>8
+	call RunOamDMA
+ 
+;	ld hl, ScrollBufferRightBottom
+;	ld de, _SCRN0
+;	ld b, 32/4
+;:
+;	rept 4
+;	ld a, [hl+]
+;	ld [de], a
+;	inc e
+;	endr
+;	dec b
+;	jr nz, :-
+
+
+;	jp forever
+
+;forever:
+;	call wait_vblank
+
+;	ld b,b
+;	ld hl, Playfield
+;	ld de, ScrollBufferRightTop
+;	ld b, 12
+;	call ScrollBufferFillRight
+;	ld b,b
+
+:
+	ldh a, [rLY]
+	cp 20
+	jr nz, :-
+
+
+	ld hl, _SCRN0
+	ld de, Playfield+16+16*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+32
+	ld de, Playfield+16+16*64
+	call ScrollUpdateBottom
+;
+	ld hl, _SCRN0+64*1
+	ld de, Playfield+16+17*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+64*1+32
+	ld de, Playfield+16+17*64
+	call ScrollUpdateBottom
+;
+	ld hl, _SCRN0+64*2
+	ld de, Playfield+16+18*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+64*2+32
+	ld de, Playfield+16+18*64
+	call ScrollUpdateBottom
+;
+	ld hl, _SCRN0+64*3
+	ld de, Playfield+16+19*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+64*3+32
+	ld de, Playfield+16+19*64
+	call ScrollUpdateBottom
+;
+	ld hl, _SCRN0+64*4
+	ld de, Playfield+16+20*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+64*4+32
+	ld de, Playfield+16+20*64
+	call ScrollUpdateBottom
+;
+	ld hl, _SCRN0+64*5
+	ld de, Playfield+16+21*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+64*5+32
+	ld de, Playfield+16+21*64
+	call ScrollUpdateBottom
+;
+	ld hl, _SCRN0+64*6
+	ld de, Playfield+16+22*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+64*6+32
+	ld de, Playfield+16+22*64
+	call ScrollUpdateBottom
+;
+	ld hl, _SCRN0+64*7
+	ld de, Playfield+16+23*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+64*7+32
+	ld de, Playfield+16+23*64
+	call ScrollUpdateBottom
+;
+	ld hl, _SCRN0+64*8
+	ld de, Playfield+16+24*64
+	call ScrollUpdateTop
+
+	ld hl, _SCRN0+64*8+32
+	ld de, Playfield+16+24*64
+	call ScrollUpdateBottom
+
+;	ld hl, _SCRN0
+;	ld de, Playfield+16+16*64
+;	call ScrollUpdateLeft
+
+;	ld hl, _SCRN0+1
+;	ld de, Playfield+16+16*64
+;	call ScrollUpdateRight
+
+forever:
+	jp forever
+
 	jr @
 
 

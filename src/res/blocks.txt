@@ -83,8 +83,8 @@ t 9,0 13,0
 
 +Wall_LR__
 solid
-t 14,0 15,0
-t 14,0 15,0
+t 14,0 14,0
+t 15,0 15,0
 
 +Wall_LR_U
 solid

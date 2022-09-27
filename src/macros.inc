@@ -227,6 +227,14 @@ MACRO vram_bank_1
   ldh [$ff4f], a
 ENDM
 
+MACRO wait_vram
+.waitVRAM\@
+	ldh a, [rSTAT]
+	and STATF_BUSY
+	jr nz, .waitVRAM\@
+	; Now there's 16 "safe" cycles to write during hblank
+ENDM
+
 ; -------------------------------------
 ; Load constants in parts
 ; -------------------------------------
