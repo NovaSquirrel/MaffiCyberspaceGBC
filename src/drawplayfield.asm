@@ -39,8 +39,6 @@ ScrollUpdateLeft::
 	ld e,a
 	jr nc, :+
 		inc d
-		set 4, d
-		res 5, d
 	:
 	
 	; Get second block
@@ -55,8 +53,6 @@ ScrollUpdateLeft::
 	ld e,a
 	jr nc, :+
 		inc d
-		set 4, d
-		res 5, d
 	:
 
 	; Write ---------------------------
@@ -179,12 +175,6 @@ ScrollUpdateTop::
 .loop:
 	push bc
 
-	push hl
-	; Get the bits for the current row
-	ld a, e
-	and %11000000
-	ld h, a
-
 	; Get first block
 	ld a, [de]
 	inc e
@@ -192,26 +182,12 @@ ScrollUpdateTop::
 	add a
 	ld b, a
 
-	; Wrap within the row
-	ld a, e
-	and %00111111
-	or h
-	ld e, a
-
 	; Get second block
 	ld a, [de]
 	inc e
 	add a
 	add a
 	ld c, a
-
-	; Wrap within the row
-	ld a, e
-	and %00111111
-	or h
-	ld e, a
-
-	pop hl
 
 	; Write ---------------------------
 	push de
@@ -247,12 +223,6 @@ ScrollUpdateBottom::
 .loop:
 	push bc
 
-	push hl
-	; Get the bits for the current row
-	ld a, e
-	and %11000000
-	ld h, a
-
 	; Get first block
 	ld a, [de]
 	inc e
@@ -261,12 +231,6 @@ ScrollUpdateBottom::
 	add 2 ; Bottom row
 	ld b, a
 
-	; Wrap within the row
-	ld a, e
-	and %00111111
-	or h
-	ld e, a
-
 	; Get second block
 	ld a, [de]
 	inc e
@@ -274,14 +238,6 @@ ScrollUpdateBottom::
 	add a
 	add 2 ; Bottom row
 	ld c, a
-
-	; Wrap within the row
-	ld a, e
-	and %00111111
-	or h
-	ld e, a
-
-	pop hl
 
 	; Write ---------------------------
 	push de
@@ -527,7 +483,10 @@ UpdateRow:
 
 	ldh a, [CameraX+1]
 	add a
-	sub 2      ; Go left one metatile
+	cp 2
+	jr c, :+
+		sub 2      ; Go left one metatile
+	:
 	ld c, a
 	and 31
 	add_hl_a
@@ -558,7 +517,10 @@ UpdateColumn:
 
 	ldh a, [CameraY+1]
 	add a
-	sub 2      ; Go up one metatile
+	cp 2
+	jr c, :+
+		sub 2      ; Go up one metatile
+	:
 	ld c, a
 	call GetRowAddress
 
