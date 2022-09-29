@@ -16,28 +16,9 @@
 ;
 
 include "macros.inc"
+include "res/blockenum.inc"
 
 SECTION "Maze", ROM0
-
-	enum_start
-	enum_elem T_EMPTY
-	enum_elem T_FLOOR
-	enum_elem T_WALL
-	enum_elem T_WALL____U
-	enum_elem T_WALL___D_
-	enum_elem T_WALL___DU
-	enum_elem T_WALL__R__
-	enum_elem T_WALL__R_U
-	enum_elem T_WALL__RD_
-	enum_elem T_WALL__RDU
-	enum_elem T_WALL_L___
-	enum_elem T_WALL_L__U
-	enum_elem T_WALL_l_D_
-	enum_elem T_WALL_L_DU
-	enum_elem T_WALL_LR__
-	enum_elem T_WALL_LR_U
-	enum_elem T_WALL_LRD_
-	enum_elem T_WALL_LRDU
 
 FLOOD_VISITED = 128
 
@@ -57,7 +38,7 @@ GenerateMaze::
 	jr nz, :-
 
 	; Create a big space to put walls on
-	ld a, T_FLOOR
+	ld a, BlockType_Floor
 	ld b, 56
 	ld c, 56
 	ld d, 4
@@ -111,7 +92,7 @@ NextColumn:
 	ld d, 10
 	ld e, 10
 	call MapPointerDE_XY
-	ld [hl], T_FLOOR
+	ld [hl], BlockType_Floor
 	call FloodFillPlayfield
 
 	; -----------------------------------------------------
@@ -124,7 +105,7 @@ NextColumn:
 FixMazeForward:
 	rept 4
 	ld a, [hl+]
-	dec a ; Test for 1 (which is T_FLOOR)
+	dec a ; Test for 1 (which is BlockType_Floor)
 	jr nz, :+
 		push hl
 		call FixUnvisitedFloor
@@ -141,7 +122,7 @@ FixMazeForward:
 FixMazeBackward:
 	rept 4
 	ld a, [hl-]
-	dec a ; Test for 1 (which is T_FLOOR)
+	dec a ; Test for 1 (which is BlockType_Floor)
 	jr nz, :+
 		push hl
 		call FixUnvisitedFloor
@@ -161,7 +142,7 @@ FixMazeBackward:
 	;ld de, 0 ; Visited counter
 CountVisitedUnvisited:
 	ld a, [hl+]
-	cp T_WALL
+	cp BlockType_Wall
 
 	jr nz, :+
 		push bc
@@ -183,7 +164,7 @@ CountVisitedUnvisited:
 
 		pop hl
 		; Store the modified wall
-		ld a, T_WALL
+		ld a, BlockType_Wall
 		add c
 		dec l
 		ld [hl+], a
@@ -210,9 +191,9 @@ CountVisitedUnvisited:
 ; Helper for the wall autotiling
 IsWallAutotile:
 	ld a, [hl]
-	cp T_WALL
+	cp BlockType_Wall
 	jr c, :+
-	cp T_WALL_LRDU+1
+	cp BlockType_Wall_LRDU+1
 	rl c
 	ret ; NC if >=
         ; C if  <
@@ -283,27 +264,27 @@ FixUnvisitedFloor:
 
 .fix_left:
 	inc l
-	ld [hl], T_FLOOR
+	ld [hl], BlockType_Floor
 	jp FloodFillPlayfield
 .fix_right:
 	dec l
-	ld [hl], T_FLOOR
+	ld [hl], BlockType_Floor
 	jp FloodFillPlayfield
 .fix_down:
 	ld de, -64
 	add hl, de
-	ld [hl], T_FLOOR
+	ld [hl], BlockType_Floor
 	jp FloodFillPlayfield
 .fix_up:
 	ld de, 64
 	add hl, de
-	ld [hl], T_FLOOR
+	ld [hl], BlockType_Floor
 	jp FloodFillPlayfield
 
 ; Add a wall at [HL] and put a block in a random direction
 AddWallHere:
 	; Place a wall at [HL]
-	ld [hl], T_WALL
+	ld [hl], BlockType_Wall
 
 	; Choose a direction to go from here
 	call RandomByte
@@ -311,7 +292,7 @@ AddWallHere:
 	jr nz, .notLeft
 	; A = 0 : Left
 	dec l
-	ld [hl], T_WALL
+	ld [hl], BlockType_Wall
 	inc l
 	ret
 .notLeft:
@@ -321,7 +302,7 @@ AddWallHere:
 	push hl
 	ld de, -64
 	add hl, de
-	ld [hl], T_WALL
+	ld [hl], BlockType_Wall
 	pop hl
 	ret
 .notUp:
@@ -331,13 +312,13 @@ AddWallHere:
 	push hl
 	ld de, 64
 	add hl, de
-	ld [hl], T_WALL
+	ld [hl], BlockType_Wall
 	pop hl
 	ret
 .notDown:
 	; A = 3 : Right
 	inc l
-	ld [hl], T_WALL
+	ld [hl], BlockType_Wall
 	dec l
 	ret
 
@@ -394,14 +375,14 @@ FloodFillPlayfield:
 	; Left
 	dec l
 	ld a, [hl]
-	cp T_FLOOR
+	cp BlockType_Floor
 	call z, FloodFillAddToQueue
 	inc l
 
 	; Right
 	inc l
 	ld a, [hl]
-	cp T_FLOOR
+	cp BlockType_Floor
 	call z, FloodFillAddToQueue
 	dec l
 
@@ -411,7 +392,7 @@ FloodFillPlayfield:
 	ld bc, -64
 	add hl, bc
 	ld a, [hl]
-	cp T_FLOOR
+	cp BlockType_Floor
 	call z, FloodFillAddToQueue
 	pop hl
 
@@ -419,7 +400,7 @@ FloodFillPlayfield:
 	ld bc, 64
 	add hl, bc
 	ld a, [hl]
-	cp T_FLOOR
+	cp BlockType_Floor
 	call z, FloodFillAddToQueue
 	pop hl
 
@@ -440,7 +421,7 @@ FloodFillPlayfield:
 
 
 ; Sets HL to a pointer at a point on the map where D=X and E=Y
-MapPointerDE_XY:
+MapPointerDE_XY::
            ;     E           A
 	xor a  ; ..yy yyyy | .... ....
 	srl e

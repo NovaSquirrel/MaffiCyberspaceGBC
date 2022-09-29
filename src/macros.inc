@@ -119,6 +119,20 @@ MACRO add_hl_a
 	inc h
 ENDM
 
+MACRO add_de_a
+	add a,e
+	ld e,a
+	jr nc, @+3
+	inc d
+ENDM
+
+MACRO add_bc_a
+	add a,c
+	ld c,a
+	jr nc, @+3
+	inc b
+ENDM
+
 MACRO ld_hl_memory
   ld hl, \1
   ld a, [hli]

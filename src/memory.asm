@@ -16,15 +16,36 @@ KeyDown:: ds 1
 KeyLast:: ds 1
 KeyNew::  ds 1
 
-SECTION "BSS", WRAM0
-KeyRepeat:: ds 1
+PlayerPXL:: ds 1
+PlayerPXH:: ds 1
+PlayerPYL:: ds 1
+PlayerPYH:: ds 1
+CameraX::   ds 2
+CameraY::   ds 2
+CameraXPixel:: ds 2
+CameraYPixel:: ds 2
 
+SECTION "BSS", WRAM0
+KeyRepeat::    ds 1
 
 SECTION "Queue", WRAM0, ALIGN[8]
+	UNION     ; Flood fill mode
 FloodQueueHi::
 	ds 256
+
+	NEXTU     ; Gameplay mode
+
+	ENDU
+
+; -------------------------------------
+
+	UNION     ; Flood fill mode
 FloodQueueLo::
 	ds 256
+
+	NEXTU     ; Gameplay mode
+
+	ENDU
 
 SECTION "OAM Data", WRAM0, ALIGN[8]
 OamBuffer::

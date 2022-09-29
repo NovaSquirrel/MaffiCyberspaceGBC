@@ -24,7 +24,6 @@ SECTION "DrawPlayfield", ROM0
 
 ScrollUpdateLeft::
 	ld b, 5
-	ld b,b
 .loop:
 	push bc
 
@@ -40,8 +39,10 @@ ScrollUpdateLeft::
 	ld e,a
 	jr nc, :+
 		inc d
+		set 4, d
+		res 5, d
 	:
-
+	
 	; Get second block
 	ld a, [de]
 	add a
@@ -54,6 +55,8 @@ ScrollUpdateLeft::
 	ld e,a
 	jr nc, :+
 		inc d
+		set 4, d
+		res 5, d
 	:
 
 	; Write ---------------------------
@@ -111,6 +114,8 @@ ScrollUpdateRight::
 	ld e,a
 	jr nc, :+
 		inc d
+		set 4, d
+		res 5, d
 	:
 
 	; Get second block
@@ -126,6 +131,8 @@ ScrollUpdateRight::
 	ld e,a
 	jr nc, :+
 		inc d
+		set 4, d
+		res 5, d
 	:
 
 	; Write ---------------------------
@@ -269,5 +276,288 @@ ScrollUpdateBottom::
 	jr nz, .loop
 	ret
 
+; -----------------------------------------------------------------------------
 
+; For comparison against the new values
+def OldCameraX equs "temp1"
+def OldCameraY equs "temp2"
+
+; For telling the direction - it's the target-initial high byte
+def CameraDXH equs "temp5"
+def CameraDYH equs "temp6"
+
+AdjustCamera::
+	; Get scroll target
+	ldh a, [PlayerPXL]
+	ld e, a
+	ldh a, [PlayerPXH]
+	sub 10/2
+	jr nc, :+
+		xor a
+		ld e, a
+	:
+	cp 64-10
+	jr c, :+
+		xor a
+		ld e, a
+		ld a, 64-10
+	:
+	ld d, a
+
+	; Find difference
+	ldh a, [CameraX+0]
+	ldh [OldCameraX], a
+	ld l, a
+	ldh a, [CameraX+1]
+	ld h, a
+	; ---
+	ld a, e
+	sub l
+	ld l, a
+	ld a, d
+	sbc h
+	ld h, a
+	ldh [CameraDXH], a
+
+	; Divide by 4
+	ld a, l
+	rept 4
+	sra h
+	rra
+	endr
+	ld l, a
+
+	; Move the camera toward target
+	ldh a, [CameraX+0]
+	add l
+	ldh [CameraX+0], a
+	ldh a, [CameraX+1]
+	adc h
+	ldh [CameraX+1], a
+
+; ---------------------------------------
+
+	; Get scroll target
+	ldh a, [PlayerPYL]
+	ld e, a
+	ldh a, [PlayerPYH]
+	sub 9/2
+	jr nc, :+
+		xor a
+		ld e, a
+	:
+	cp 64-9
+	jr c, :+
+		xor a
+		ld e, a
+		ld a, 64-9
+	:
+	ld d, a
+
+	; Find difference
+	ldh a, [CameraY+0]
+	ldh [OldCameraY], a
+	ld l, a
+	ldh a, [CameraY+1]
+	ld h, a
+	; ---
+	ld a, e
+	sub l
+	ld l, a
+	ld a, d
+	sbc h
+	ld h, a
+	ldh [CameraDYH], a
+
+	; Divide by 4
+	ld a, l
+	rept 4
+	sra h
+	rra
+	endr
+	ld l, a
+
+	; Move the camera toward target
+	ldh a, [CameraY+0]
+	add l
+	ldh [CameraY+0], a
+	ldh a, [CameraY+1]
+	adc h
+	ldh [CameraY+1], a
+
+; ---------------------------------------
+; Do scroll updates on the side as necessary
+
+	; Is a column update required?
+	ld hl, CameraX
+	ldh a, [OldCameraX]
+	xor [hl]
+	and $80
+	jr z, .NoUpdateColumn
+		ldh a, [CameraDXH]
+		add a ; Check the sign
+
+		; Get the number of tiles for the current camera position
+		push af
+		ld a, [hl] ; CameraX
+		add a      ; Get top bit
+		ldh a, [CameraX+1]
+		rla        ; Add in the top bit from CameraX+0 to get the tile count
+		ld h, a
+		pop af
+		ld a, h
+
+		jr c, .UpdateLeft
+	.UpdateRight:
+		add 20
+		call UpdateColumn
+		jr .NoUpdateColumn
+	.UpdateLeft:
+		dec a
+		call UpdateColumn
+	.NoUpdateColumn:
+
+	ld hl, CameraY
+	ldh a, [OldCameraY]
+	xor [hl]
+	and $80
+	jr z, .NoUpdateRow
+		ldh a, [CameraDYH]
+		add a ; Check the sign
+
+		; Get the number of tiles for the current camera position
+		push af
+		ld a, [hl] ; CameraY
+		add a      ; Get top bit
+		ldh a, [CameraY+1]
+		rla        ; Add in the top bit from CameraY+0 to get the tile count
+		ld h, a
+		pop af
+		ld a, h
+
+		jr c, .UpdateUp
+	.UpdateDown:
+		add 18
+		call UpdateRow
+		jr .NoUpdateRow
+	.UpdateUp:
+		call UpdateRow
+	.NoUpdateRow:
+
+; ---------------------------------------
+
+	call CameraConvertY
+	; Fall through
+CameraConvertX:
+	; Convert camera to pixel coordinates
+	ldh a, [CameraX+1]
+	ld b, a
+	ldh a, [CameraX+0]
+	rept 4
+		srl b
+		rra
+	endr
+	adc 0
+	ldh [CameraXPixel+0], a
+	ld a, b
+	ldh [CameraXPixel+1], a
+	ret
+
+CameraConvertY:
+	; Convert camera to pixel coordinates
+	ldh a, [CameraY+1]
+	ld b, a
+	ldh a, [CameraY+0]
+	rept 4
+		srl b
+		rra
+	endr
+	adc 0
+	ldh [CameraYPixel+0], a
+	ld a, b
+	ldh [CameraYPixel+1], a
+	ret
+
+UpdateRow:
+	ld b, a ; Tile to update, vertically
+
+	; Get a VRAM address to update first
+
+	call GetRowAddress
+
+	ldh a, [CameraX+1]
+	add a
+	sub 2      ; Go left one metatile
+	ld c, a
+	and 31
+	add_hl_a
+
+	; -------------------------------------------
+	; Calculate map data pointer
+	push hl
+	ld a, c
+	and %1111110
+	rra     ; Carry guaranteed clear
+	ld d, a
+	ld e, b
+	srl e
+	call MapPointerDE_XY
+	ld d, h
+	ld e, l
+	pop hl
+
+	; Pick which tiles to draw
+	srl b
+	jp c, ScrollUpdateBottom
+	jp ScrollUpdateTop
+
+UpdateColumn:
+	ld b, a ; Tile to update, horizontally
+
+	; Get a VRAM address to update first
+
+	ldh a, [CameraY+1]
+	add a
+	sub 2      ; Go up one metatile
+	ld c, a
+	call GetRowAddress
+
+	ld a, b
+	and 31
+	add_hl_a
+
+	; -------------------------------------------
+	; Calculate map data pointer
+
+	push hl
+	ld d, b
+	srl d
+	ld a, c
+	and %1111110
+	rra     ; Carry guaranteed clear
+	ld e, a
+	call MapPointerDE_XY
+	ld d, h
+	ld e, l
+	pop hl
+
+	; Pick which tiles to draw
+	srl b
+	jp c, ScrollUpdateRight
+	jp ScrollUpdateLeft
+
+GetRowAddress:
+	and 31
+	ld l, a
+	ld h, 0
+	; Multiply by 5
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl
+
+	ld de, _SCRN0
+	add hl, de
+	ret
 

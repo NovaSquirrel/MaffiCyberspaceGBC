@@ -1,3 +1,19 @@
+; Maffi cyberspace game
+; Copyright (C) 2022 NovaSquirrel
+;
+; This program is free software: you can redistribute it and/or
+; modify it under the terms of the GNU General Public License as
+; published by the Free Software Foundation; either version 3 of the
+; License, or (at your option) any later version.
+;
+; This program is distributed in the hope that it will be useful, but
+; WITHOUT ANY WARRANTY; without even the implied warranty of
+; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+; General Public License for more details.
+;
+; You should have received a copy of the GNU General Public License
+; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+;
 include "include/hardware.inc/hardware.inc"
 
 SECTION "rst00", ROM0[$0000]
@@ -58,14 +74,19 @@ EntryPoint:
 	cp $11
 	call z, InitGameBoyColor
 
+	; Clear HRAM
+	ld hl, $ff80
+	ld c, 127
+	call memclear8
+
 	; Copy in DMA routine
 	ld hl, oam_dma_routine
 	ld de, RunOamDMA
 	ld c, oam_dma_routine_end - oam_dma_routine
 	call memcpy8
 
+	; Copy in the tileset, which the screen should be off for
 	call ScreenOff
-
 	ld de, PlayfieldTileset
 	ld hl, _VRAM9000
 	ld b, 6*16
@@ -75,19 +96,14 @@ EntryPoint:
 
 	ld a, %11100100
 	ldh [rBGP], a
+	ld a, %11100000
+	ldh [rOBP0], a
+	ld a, %11100100
+	ldh [rOBP1], a
 
-;	ld a, 52
-;	ldh [seed], a
-;	inc a
-;	ldh [seed+1], a
-;	inc a
-;	ldh [seed+2], a
-;	inc a
-;	ldh [seed+3], a
-
-	; ---------------------------------------------------------------
 
 	; Results in a lot of closed-off tiles
+	; which is great for testing the maze fixer.
 	ld a, 25
 	ldh [seed], a
 	ld a, 145
@@ -102,139 +118,77 @@ EntryPoint:
 
 	call GenerateMaze
 
-;	ld a, %00011011
-;	ldh [rBGP], a
-
-	; Here is where the fun begins, happy coding :)
-
 	call ClearAndWriteOAM
-
 	call ScreenOn
-;forever:
+
+; -------------------------------------------------------------------------
+; Main loop
+forever:
+	; .----------------------
+	; | Vblank
+	; '----------------------
 	call wait_vblank
+
+	ldh a, [CameraXPixel]
+	ldh [rSCX], a
+	ldh a, [CameraYPixel]
+	ldh [rSCY], a
 
 	ld a, OamBuffer>>8
 	call RunOamDMA
- 
-;	ld hl, ScrollBufferRightBottom
-;	ld de, _SCRN0
-;	ld b, 32/4
-;:
-;	rept 4
-;	ld a, [hl+]
-;	ld [de], a
-;	inc e
-;	endr
-;	dec b
-;	jr nz, :-
 
+	; .----------------------
+	; | Game logic
+	; '----------------------
+	call ReadKeys
 
-;	jp forever
+	ld hl, PlayerPXH
+	ldh a, [KeyDown]
+	and PADF_LEFT
+	jr z, :+
+		ldh a, [PlayerPXL]
+		sub 16
+		ldh [PlayerPXL], a
+		jr nc, :+
+			dec [hl]
+	:
+	ldh a, [KeyDown]
+	and PADF_RIGHT
+	jr z, :+
+		ldh a, [PlayerPXL]
+		add 16
+		ldh [PlayerPXL], a
+		jr nc, :+
+			inc [hl]
+	:
 
-;forever:
-;	call wait_vblank
+	ld hl, PlayerPYH
+	ldh a, [KeyDown]
+	and PADF_UP
+	jr z, :+
+		ldh a, [PlayerPYL]
+		sub 16
+		ldh [PlayerPYL], a
+		jr nc, :+
+			dec [hl]
+	:
 
-;	ld b,b
-;	ld hl, Playfield
-;	ld de, ScrollBufferRightTop
-;	ld b, 12
-;	call ScrollBufferFillRight
-;	ld b,b
+	ldh a, [KeyDown]
+	and PADF_DOWN
+	jr z, :+
+		ldh a, [PlayerPYL]
+		add 16
+		ldh [PlayerPYL], a
+		jr nc, :+
+			inc [hl]
 
-:
-	ldh a, [rLY]
-	cp 20
-	jr nz, :-
+	:
 
+	call AdjustCamera
 
-	ld hl, _SCRN0
-	ld de, Playfield+16+16*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+32
-	ld de, Playfield+16+16*64
-	call ScrollUpdateBottom
-;
-	ld hl, _SCRN0+64*1
-	ld de, Playfield+16+17*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+64*1+32
-	ld de, Playfield+16+17*64
-	call ScrollUpdateBottom
-;
-	ld hl, _SCRN0+64*2
-	ld de, Playfield+16+18*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+64*2+32
-	ld de, Playfield+16+18*64
-	call ScrollUpdateBottom
-;
-	ld hl, _SCRN0+64*3
-	ld de, Playfield+16+19*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+64*3+32
-	ld de, Playfield+16+19*64
-	call ScrollUpdateBottom
-;
-	ld hl, _SCRN0+64*4
-	ld de, Playfield+16+20*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+64*4+32
-	ld de, Playfield+16+20*64
-	call ScrollUpdateBottom
-;
-	ld hl, _SCRN0+64*5
-	ld de, Playfield+16+21*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+64*5+32
-	ld de, Playfield+16+21*64
-	call ScrollUpdateBottom
-;
-	ld hl, _SCRN0+64*6
-	ld de, Playfield+16+22*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+64*6+32
-	ld de, Playfield+16+22*64
-	call ScrollUpdateBottom
-;
-	ld hl, _SCRN0+64*7
-	ld de, Playfield+16+23*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+64*7+32
-	ld de, Playfield+16+23*64
-	call ScrollUpdateBottom
-;
-	ld hl, _SCRN0+64*8
-	ld de, Playfield+16+24*64
-	call ScrollUpdateTop
-
-	ld hl, _SCRN0+64*8+32
-	ld de, Playfield+16+24*64
-	call ScrollUpdateBottom
-
-;	ld hl, _SCRN0
-;	ld de, Playfield+16+16*64
-;	call ScrollUpdateLeft
-
-;	ld hl, _SCRN0+1
-;	ld de, Playfield+16+16*64
-;	call ScrollUpdateRight
-
-forever:
 	jp forever
 
-	jr @
-
-
-PlayfieldTileset:
-	incbin "res/tilesets/playfield_tiles.pb16"
+SECTION "OamCode", ROM0
 
 oam_dma_routine:
 	ldh [rDMA],a
@@ -244,3 +198,8 @@ oam_dma_routine:
 	jr  nz,.wait
 	ret
 oam_dma_routine_end:
+
+SECTION "Tileset", ROM0
+
+PlayfieldTileset:
+	incbin "res/tilesets/playfield_tiles.pb16"

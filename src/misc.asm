@@ -74,7 +74,7 @@ memset::
   ld a, e
   ld [hl+], a
   dec bc
-  ld a,b
+  ld a, b
   or c
   jr nz, memset
   ret
@@ -84,7 +84,7 @@ memcpy::
   ld [de], a
   inc de
   dec bc
-  ld a,b
+  ld a, b 
   or c
   jr nz, memcpy
   ret
@@ -114,7 +114,7 @@ strcpy:
   jr strcpy
   ret
 
-readkeys::
+ReadKeys::
   ldh a, [KeyDown]
   ldh [KeyLast], a
 
