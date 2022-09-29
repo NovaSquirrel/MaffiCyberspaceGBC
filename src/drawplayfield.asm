@@ -23,7 +23,7 @@ SECTION "DrawPlayfield", ROM0
 ; -----------------------------------------------------------------------------
 
 ScrollUpdateLeft::
-	ld b, 5
+	ld b, 6
 .loop:
 	push bc
 
@@ -71,12 +71,12 @@ ScrollUpdateLeft::
 	set 1, e     ; 2
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
-	res 2, h     ; 2 Wrap vertically
 
 	ld e, c
 
-    ld bc, 32    ; Now BC is free
+    ld bc, 32    ; Now BC is free so it can be used for adding to HL
     add hl, bc
+	res 2, h     ; Wrap vertically
 
 	wait_vram
 	ld a, [de]   ; 2
@@ -85,9 +85,9 @@ ScrollUpdateLeft::
 	set 1, e     ; 2
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
-	res 2, h     ; 2 wrap vertically
 
     add hl, bc
+	res 2, h     ; Wrap vertically
 
 	pop de
 	pop bc
@@ -97,7 +97,7 @@ ScrollUpdateLeft::
 	ret
 
 ScrollUpdateRight::
-	ld b, 5
+	ld b, 6
 .loop:
 	push bc
 
@@ -147,12 +147,12 @@ ScrollUpdateRight::
 	set 1, e     ; 2
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
-	res 2, h     ; 2 Wrap vertically
 
 	ld e, c
 
-    ld bc, 32    ; Now BC is free
+    ld bc, 32    ; Now BC is free so it can be used for adding to HL
     add hl, bc
+	res 2, h     ; Wrap vertically
 
 	wait_vram
 	ld a, [de]   ; 2
@@ -161,9 +161,9 @@ ScrollUpdateRight::
 	set 1, e     ; 2
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
-	res 2, h     ; 2 wrap vertically
 
     add hl, bc
+	res 2, h     ; Wrap vertically
 
 	pop de
 	pop bc
@@ -179,6 +179,12 @@ ScrollUpdateTop::
 .loop:
 	push bc
 
+	push hl
+	; Get the bits for the current row
+	ld a, e
+	and %11000000
+	ld h, a
+
 	; Get first block
 	ld a, [de]
 	inc e
@@ -186,12 +192,26 @@ ScrollUpdateTop::
 	add a
 	ld b, a
 
+	; Wrap within the row
+	ld a, e
+	and %00111111
+	or h
+	ld e, a
+
 	; Get second block
 	ld a, [de]
 	inc e
 	add a
 	add a
 	ld c, a
+
+	; Wrap within the row
+	ld a, e
+	and %00111111
+	or h
+	ld e, a
+
+	pop hl
 
 	; Write ---------------------------
 	push de
@@ -227,6 +247,12 @@ ScrollUpdateBottom::
 .loop:
 	push bc
 
+	push hl
+	; Get the bits for the current row
+	ld a, e
+	and %11000000
+	ld h, a
+
 	; Get first block
 	ld a, [de]
 	inc e
@@ -235,6 +261,12 @@ ScrollUpdateBottom::
 	add 2 ; Bottom row
 	ld b, a
 
+	; Wrap within the row
+	ld a, e
+	and %00111111
+	or h
+	ld e, a
+
 	; Get second block
 	ld a, [de]
 	inc e
@@ -242,6 +274,14 @@ ScrollUpdateBottom::
 	add a
 	add 2 ; Bottom row
 	ld c, a
+
+	; Wrap within the row
+	ld a, e
+	and %00111111
+	or h
+	ld e, a
+
+	pop hl
 
 	; Write ---------------------------
 	push de
