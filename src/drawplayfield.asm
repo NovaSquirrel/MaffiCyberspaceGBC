@@ -110,8 +110,6 @@ ScrollUpdateRight::
 	ld e,a
 	jr nc, :+
 		inc d
-		set 4, d
-		res 5, d
 	:
 
 	; Get second block
@@ -127,8 +125,6 @@ ScrollUpdateRight::
 	ld e,a
 	jr nc, :+
 		inc d
-		set 4, d
-		res 5, d
 	:
 
 	; Write ---------------------------
