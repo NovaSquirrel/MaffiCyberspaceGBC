@@ -63,26 +63,26 @@ ScrollUpdateLeft::
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
-    set 5, l     ; 2 Move down a row
+	set 5, l     ; 2 Move down a row
 	set 1, e     ; 2
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
 
 	ld e, c
 
-    ld bc, 32    ; Now BC is free so it can be used for adding to HL
-    add hl, bc
+	ld bc, 32    ; Now BC is free so it can be used for adding to HL
+	add hl, bc
 	res 2, h     ; Wrap vertically
 
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
-    set 5, l     ; 2 Move down a row
+	set 5, l     ; 2 Move down a row
 	set 1, e     ; 2
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
 
-    add hl, bc
+	add hl, bc
 	res 2, h     ; Wrap vertically
 
 	pop de
@@ -135,15 +135,15 @@ ScrollUpdateRight::
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
-    set 5, l     ; 2 Move down a row
+	set 5, l     ; 2 Move down a row
 	set 1, e     ; 2
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
 
 	ld e, c
 
-    ld bc, 32    ; Now BC is free so it can be used for adding to HL
-    add hl, bc
+	ld bc, 32    ; Now BC is free so it can be used for adding to HL
+	add hl, bc
 	res 2, h     ; Wrap vertically
 
 	wait_vram
@@ -154,7 +154,7 @@ ScrollUpdateRight::
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
 
-    add hl, bc
+	add hl, bc
 	res 2, h     ; Wrap vertically
 
 	pop de
