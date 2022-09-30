@@ -87,6 +87,12 @@ EntryPoint:
 
 	; Copy in the tileset, which the screen should be off for
 	call ScreenOff
+
+	ld de, SpriteTileset
+	ld hl, _VRAM8000
+	ld b, 10*16
+	call pb16_unpack_block
+
 	ld de, PlayfieldTileset
 	ld hl, _VRAM9000
 	ld b, 6*16
@@ -203,3 +209,5 @@ SECTION "Tileset", ROM0
 
 PlayfieldTileset:
 	incbin "res/tilesets/playfield_tiles.pb16"
+SpriteTileset:
+	incbin "res/tilesets/sprite_tiles.pb16"
