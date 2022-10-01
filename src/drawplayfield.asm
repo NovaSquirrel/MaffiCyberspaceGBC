@@ -15,7 +15,7 @@
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-include "macros.inc"
+include "include/macros.inc"
 include "include/hardware.inc/hardware.inc"
 
 SECTION "DrawPlayfield", ROM0
@@ -278,8 +278,7 @@ def OldCameraY equs "temp2"
 def CameraDXH equs "temp5"
 def CameraDYH equs "temp6"
 
-AdjustCamera::
-	; Get scroll target
+GetCameraTargetX:
 	ldh a, [PlayerPXL]
 	ld e, a
 	ldh a, [PlayerPXH]
@@ -295,6 +294,44 @@ AdjustCamera::
 		ld a, 64-10
 	:
 	ld d, a
+	ret
+
+GetCameraTargetY:
+	ldh a, [PlayerPYL]
+	ld e, a
+	ldh a, [PlayerPYH]
+	sub 9/2
+	jr nc, :+
+		xor a
+		ld e, a
+	:
+	cp 64-9
+	jr c, :+
+		xor a
+		ld e, a
+		ld a, 64-9
+	:
+	ld d, a
+	ret
+
+InitCamera::
+	call GetCameraTargetX
+	ld a, e
+	ldh [CameraX+0], a
+	ld a, d
+	ldh [CameraX+1], a
+
+	call GetCameraTargetY
+	ld a, e
+	ldh [CameraY+0], a
+	ld a, d
+	ldh [CameraY+1], a
+
+	jp CameraConvertXY
+
+AdjustCamera::
+	; Get scroll target
+	call GetCameraTargetX
 
 	; Find difference
 	ldh a, [CameraX+0]
@@ -312,12 +349,7 @@ AdjustCamera::
 	ldh [CameraDXH], a
 
 	; Divide by 4
-	ld a, l
-	rept 4
-	sra h
-	rra
-	endr
-	ld l, a
+	call DivideDifferenceForLerp
 
 	; Move the camera toward target
 	ldh a, [CameraX+0]
@@ -330,21 +362,7 @@ AdjustCamera::
 ; ---------------------------------------
 
 	; Get scroll target
-	ldh a, [PlayerPYL]
-	ld e, a
-	ldh a, [PlayerPYH]
-	sub 9/2
-	jr nc, :+
-		xor a
-		ld e, a
-	:
-	cp 64-9
-	jr c, :+
-		xor a
-		ld e, a
-		ld a, 64-9
-	:
-	ld d, a
+	call GetCameraTargetY
 
 	; Find difference
 	ldh a, [CameraY+0]
@@ -361,13 +379,7 @@ AdjustCamera::
 	ld h, a
 	ldh [CameraDYH], a
 
-	; Divide by 4
-	ld a, l
-	rept 4
-	sra h
-	rra
-	endr
-	ld l, a
+	call DivideDifferenceForLerp
 
 	; Move the camera toward target
 	ldh a, [CameraY+0]
@@ -438,6 +450,7 @@ AdjustCamera::
 
 ; ---------------------------------------
 
+CameraConvertXY:
 	call CameraConvertY
 	; Fall through
 CameraConvertX:
@@ -450,9 +463,9 @@ CameraConvertX:
 		rra
 	endr
 	adc 0
-	ldh [CameraXPixel+0], a
+	ld [CameraXPixel+0], a
 	ld a, b
-	ldh [CameraXPixel+1], a
+	ld [CameraXPixel+1], a
 	ret
 
 CameraConvertY:
@@ -465,11 +478,12 @@ CameraConvertY:
 		rra
 	endr
 	adc 0
-	ldh [CameraYPixel+0], a
+	ld [CameraYPixel+0], a
 	ld a, b
-	ldh [CameraYPixel+1], a
+	ld [CameraYPixel+1], a
 	ret
 
+; Update a row of tiles (for scrolling)
 UpdateRow:
 	ld b, a ; Tile to update, vertically
 
@@ -506,6 +520,7 @@ UpdateRow:
 	jp c, ScrollUpdateBottom
 	jp ScrollUpdateTop
 
+; Update a column of tiles (for scrolling)
 UpdateColumn:
 	ld b, a ; Tile to update, horizontally
 
@@ -559,3 +574,29 @@ GetRowAddress:
 	add hl, de
 	ret
 
+DivideDifferenceForLerp:
+	ld a, l
+	rept 3
+	sra h
+	rra
+	endr
+	ld l, a
+	ret
+
+; Render a whole screen worth of level tiles
+RenderLevelScreen::
+	ldh a, [CameraY+0]
+	add a
+	ldh a, [CameraY+1]
+	rla
+	ld c, a  ; Starting row number
+	ld b, 19 ; Rows to display
+.loop:
+	push bc
+	ld a, c
+	call UpdateRow
+	pop bc
+	inc c
+	dec b
+	jr nz, .loop
+	ret

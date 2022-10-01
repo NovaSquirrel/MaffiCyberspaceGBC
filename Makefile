@@ -118,7 +118,8 @@ res/%.pb16: src/tools/pb16.py res/%.2bpp
 
 res/tilesets/%.2bpp: res/tilesets/%.png
 	@$(MKDIR_P) $(@D)
-	$(RGBGFX) -o $@ $<
+	#$(RGBGFX) -o $@ $<
+	py -3 src/tools/pilbmp2nes.py --planes=0,1 $< $@
 
 res/blockdata.asm res/blockenum.inc: src/tools/makeblocks.py res/blocks.txt
 	@$(MKDIR_P) $(@D)

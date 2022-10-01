@@ -15,13 +15,13 @@
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-include "macros.inc"
+include "include/macros.inc"
 include "include/hardware.inc/hardware.inc"
 
 SECTION "miscellaneous", ROM0
 
 ScreenOff::
-  call wait_vblank
+  call WaitVblank
   xor a
   ldh [rLCDC], a
   ret
@@ -39,7 +39,7 @@ vblank::
   pop af
   reti
 
-wait_vblank::
+WaitVblank::
   push hl
   push af
   ld a, %00011

@@ -15,7 +15,7 @@
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-include "macros.inc"
+include "include/macros.inc"
 include "res/blockenum.inc"
 
 SECTION "Maze", ROM0

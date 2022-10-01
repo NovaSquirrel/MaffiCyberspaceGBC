@@ -15,6 +15,7 @@
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;
 include "include/hardware.inc/hardware.inc"
+include "include/macros.inc"
 
 SECTION "rst00", ROM0[$0000]
 	ret
@@ -79,6 +80,11 @@ EntryPoint:
 	ld c, 127
 	call memclear8
 
+	; Clear RAM (but not the return address)
+	ld hl, _RAM
+	ld bc, 4096-2
+	call memclear
+
 	; Copy in DMA routine
 	ld hl, oam_dma_routine
 	ld de, RunOamDMA
@@ -100,13 +106,12 @@ EntryPoint:
 
 	; ---------------------------------------------------------------
 
-	ld a, %11100100
+	ld a, %00011011
 	ldh [rBGP], a
-	ld a, %11100000
+	ld a, %00101111
 	ldh [rOBP0], a
-	ld a, %11100100
+	ld a, %00011011
 	ldh [rOBP1], a
-
 
 	; Results in a lot of closed-off tiles
 	; which is great for testing the maze fixer.
@@ -129,15 +134,20 @@ EntryPoint:
 
 ; -------------------------------------------------------------------------
 ; Main loop
+	ld a, 32
+	ldh [PlayerPXH], a
+	ldh [PlayerPYH], a
+	call InitCamera
+	call RenderLevelScreen
 forever:
 	; .----------------------
 	; | Vblank
 	; '----------------------
-	call wait_vblank
+	call WaitVblank
 
-	ldh a, [CameraXPixel]
+	ld a, [CameraXPixel]
 	ldh [rSCX], a
-	ldh a, [CameraYPixel]
+	ld a, [CameraYPixel]
 	ldh [rSCY], a
 
 	ld a, OamBuffer>>8
@@ -147,48 +157,12 @@ forever:
 	; | Game logic
 	; '----------------------
 	call ReadKeys
+	call ClearOAM
 
-	ld hl, PlayerPXH
-	ldh a, [KeyDown]
-	and PADF_LEFT
-	jr z, :+
-		ldh a, [PlayerPXL]
-		sub 16
-		ldh [PlayerPXL], a
-		jr nc, :+
-			dec [hl]
-	:
-	ldh a, [KeyDown]
-	and PADF_RIGHT
-	jr z, :+
-		ldh a, [PlayerPXL]
-		add 16
-		ldh [PlayerPXL], a
-		jr nc, :+
-			inc [hl]
-	:
+	xor a
+	ldh [OamWrite], a
 
-	ld hl, PlayerPYH
-	ldh a, [KeyDown]
-	and PADF_UP
-	jr z, :+
-		ldh a, [PlayerPYL]
-		sub 16
-		ldh [PlayerPYL], a
-		jr nc, :+
-			dec [hl]
-	:
-
-	ldh a, [KeyDown]
-	and PADF_DOWN
-	jr z, :+
-		ldh a, [PlayerPYL]
-		add 16
-		ldh [PlayerPYL], a
-		jr nc, :+
-			inc [hl]
-
-	:
+	call RunPlayer
 
 	call AdjustCamera
 

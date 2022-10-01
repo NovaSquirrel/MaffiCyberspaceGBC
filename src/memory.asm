@@ -22,11 +22,14 @@ PlayerPYL:: ds 1
 PlayerPYH:: ds 1
 CameraX::   ds 2
 CameraY::   ds 2
-CameraXPixel:: ds 2
-CameraYPixel:: ds 2
+NegativeCameraX::   ds 2
+NegativeCameraY::   ds 2
 
 SECTION "BSS", WRAM0
 KeyRepeat::    ds 1
+PlayerDrawDirection:: ds 1
+CameraXPixel:: ds 2
+CameraYPixel:: ds 2
 
 SECTION "Queue", WRAM0, ALIGN[8]
 	UNION     ; Flood fill mode
