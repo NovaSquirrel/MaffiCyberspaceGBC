@@ -118,29 +118,30 @@ ReadKeys::
   ldh a, [KeyDown]
   ldh [KeyLast], a
 
+  ld c, LOW(rP1)
   ld a, P1F_GET_BTN
-  ldh [rP1], a
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
+  ldh [$ff00+c], a
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
   and $f
   ld b, a
 
   ld a, P1F_GET_DPAD
-  ldh [rP1], a
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
-  ldh a, [rP1]
+  ldh [$ff00+c], a
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
+  ldh a, [$ff00+c]
   and $f
   swap a
   or b
@@ -223,13 +224,6 @@ ClearOAM::
   inc l
   inc l
   jr nz, .clear_sprites
-  ret
-
-InitGameBoyColor::
-  xor a
-  ldh [rVBK], a ; VRAM bank
-  ld a, 1
-  ldh [rSVBK], a ; WRAM bank
   ret
 
 ClearAndWriteOAM::

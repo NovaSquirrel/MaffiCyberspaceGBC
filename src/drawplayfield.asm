@@ -22,17 +22,7 @@ SECTION "DrawPlayfield", ROM0
 
 ; -----------------------------------------------------------------------------
 
-ScrollUpdateLeft::
-	ld b, 6
-.loop:
-	push bc
-
-	; Get first block
-	ld a, [de]
-	add a
-	add a
-	ld b, a
-
+GoDownOneLevelRow:
 	; Move down one row in level data
 	ld a, 64
 	add a,e
@@ -40,6 +30,16 @@ ScrollUpdateLeft::
 	jr nc, :+
 		inc d
 	:
+	ret
+
+ScrollUpdateLeftRightRead:
+	; Get first block
+	ld a, [de]
+	add a
+	add a
+	ld b, a
+
+	call GoDownOneLevelRow
 	
 	; Get second block
 	ld a, [de]
@@ -47,19 +47,10 @@ ScrollUpdateLeft::
 	add a
 	ld c, a
 
-	; Move down one row in level data
-	ld a, 64
-	add a,e
-	ld e,a
-	jr nc, :+
-		inc d
-	:
+	call GoDownOneLevelRow
+	ret
 
-	; Write ---------------------------
-	push de
-	ld d, HIGH(BlockAppearance)
-
-	ld e, b
+ScrollUpdateLeftRightWriteOne:
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
@@ -67,6 +58,14 @@ ScrollUpdateLeft::
 	set 1, e     ; 2
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
+	ret
+
+ScrollUpdateLeftRightWrite:
+	push de
+	ld d, HIGH(BlockAppearance)
+
+	ld e, b
+	call ScrollUpdateLeftRightWriteOne
 
 	ld e, c
 
@@ -74,20 +73,21 @@ ScrollUpdateLeft::
 	add hl, bc
 	res 2, h     ; Wrap vertically
 
-	wait_vram
-	ld a, [de]   ; 2
-	ld [hl], a   ; 2
-	set 5, l     ; 2 Move down a row
-	set 1, e     ; 2
-	ld a, [de]   ; 2
-	ld [hl], a   ; 2
+	call ScrollUpdateLeftRightWriteOne
 
 	add hl, bc
 	res 2, h     ; Wrap vertically
 
 	pop de
-	pop bc
+	ret
 
+ScrollUpdateLeft::
+	ld b, 6
+.loop:
+	push bc
+	call ScrollUpdateLeftRightRead
+	call ScrollUpdateLeftRightWrite
+	pop bc
 	dec b
 	jr nz, .loop
 	ret
@@ -96,81 +96,18 @@ ScrollUpdateRight::
 	ld b, 6
 .loop:
 	push bc
-
-	; Get first block
-	ld a, [de]
-	add a
-	add a
-	inc a ; Right side
-	ld b, a
-
-	; Move down one row in level data
-	ld a, 64
-	add a,e
-	ld e,a
-	jr nc, :+
-		inc d
-	:
-
-	; Get second block
-	ld a, [de]
-	add a
-	add a
-	inc a ; Right side
-	ld c, a
-
-	; Move down one row in level data
-	ld a, 64
-	add a,e
-	ld e,a
-	jr nc, :+
-		inc d
-	:
-
-	; Write ---------------------------
-	push de
-	ld d, HIGH(BlockAppearance)
-
-	ld e, b
-	wait_vram
-	ld a, [de]   ; 2
-	ld [hl], a   ; 2
-	set 5, l     ; 2 Move down a row
-	set 1, e     ; 2
-	ld a, [de]   ; 2
-	ld [hl], a   ; 2
-
-	ld e, c
-
-	ld bc, 32    ; Now BC is free so it can be used for adding to HL
-	add hl, bc
-	res 2, h     ; Wrap vertically
-
-	wait_vram
-	ld a, [de]   ; 2
-	ld [hl], a   ; 2
-    set 5, l     ; 2 Move down a row
-	set 1, e     ; 2
-	ld a, [de]   ; 2
-	ld [hl], a   ; 2
-
-	add hl, bc
-	res 2, h     ; Wrap vertically
-
-	pop de
+	call ScrollUpdateLeftRightRead
+	inc b
+	inc c
+	call ScrollUpdateLeftRightWrite
 	pop bc
-
 	dec b
 	jr nz, .loop
 	ret
 
 ; -----------------------------------------------------------------------------
 
-ScrollUpdateTop::
-	ld b, 6
-.loop:
-	push bc
-
+ScrollUpdateTopBottomRead:
 	; Get first block
 	ld a, [de]
 	inc e
@@ -184,88 +121,82 @@ ScrollUpdateTop::
 	add a
 	add a
 	ld c, a
+	ret
+
+ScrollUpdateTopWrite:
+	wait_vram
+	ld a, [de]   ; 2
+	ld [hl+], a  ; 2
+	inc e        ; 1
+	ld a, [de]   ; 2
+	ld [hl+], a  ; 2
+	res 5, l     ; 2 Wrap horizontally
+	ret
+
+ScrollUpdateTop::
+	ld b, 6
+	push hl
+	push de
+.loop:
+	push bc
+
+	call ScrollUpdateTopBottomRead
 
 	; Write ---------------------------
 	push de
 	ld d, HIGH(BlockAppearance)
-
 	ld e, b
-	wait_vram
-	ld a, [de]   ; 2
-	ld [hl+], a  ; 2
-	inc e        ; 1
-	ld a, [de]   ; 2
-	ld [hl+], a  ; 2
-	res 5, l     ; 2 Wrap horizontally
-
+	call ScrollUpdateTopWrite
 	ld e, c
-	wait_vram
-	ld a, [de]   ; 2
-	ld [hl+], a  ; 2
-	inc e        ; 1
-	ld a, [de]   ; 2
-	ld [hl+], a  ; 2
-	res 5, l     ; 2 Wrap horizontally
+	call ScrollUpdateTopWrite
 
 	pop de
 	pop bc
 
 	dec b
 	jr nz, .loop
+	pop de
+	pop hl
+	ret
+
+ScrollUpdateBottomWrite:
+	wait_vram
+	ld a, [de]   ; 2
+	ld [hl+], a  ; 2
+	inc e        ; 1
+	ld a, [de]   ; 2
+	ld [hl], a   ; 2
+	res 5, l     ; 2 Wrap horizontally
+	inc l        ; 1
+	set 5, l     ; 2
 	ret
 
 ScrollUpdateBottom::
 	ld b, 6
+	push hl
+	push de
 .loop:
 	push bc
 
-	; Get first block
-	ld a, [de]
-	inc e
-	add a
-	add a
-	add 2 ; Bottom row
-	ld b, a
-
-	; Get second block
-	ld a, [de]
-	inc e
-	add a
-	add a
-	add 2 ; Bottom row
-	ld c, a
+	call ScrollUpdateTopBottomRead
+	set 1, b
+	set 1, c
 
 	; Write ---------------------------
 	push de
 	ld d, HIGH(BlockAppearance)
-
 	ld e, b
-	wait_vram
-	ld a, [de]   ; 2
-	ld [hl+], a  ; 2
-	inc e        ; 1
-	ld a, [de]   ; 2
-	ld [hl], a   ; 2
-	res 5, l     ; 2 Wrap horizontally
-	inc l        ; 1
-	set 5, l     ; 2
-
+	call ScrollUpdateBottomWrite
 	ld e, c
-	wait_vram
-	ld a, [de]   ; 2
-	ld [hl+], a  ; 2
-	inc e        ; 1
-	ld a, [de]   ; 2
-	ld [hl], a   ; 2
-	res 5, l     ; 2 Wrap horizontally
-	inc l        ; 1
-	set 5, l     ; 2
+	call ScrollUpdateBottomWrite
 
 	pop de
 	pop bc
 
 	dec b
 	jr nz, .loop
+	pop de
+	pop hl
 	ret
 
 ; -----------------------------------------------------------------------------
