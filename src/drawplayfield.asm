@@ -18,19 +18,144 @@
 include "include/macros.inc"
 include "include/hardware.inc/hardware.inc"
 
-SECTION "DrawPlayfield", ROM0
+SECTION "DrawPlayfieldColor", ROM0
+
+ColorUpdateLeftRight:
+	ld b, 6
+	ld a, 1
+	ldh [rVBK], a
+.loop:
+	; --- Read ---
+	push bc
+	push hl
+	; Get first block
+	ld a, [de]
+	and 127
+	ld hl, BlockAppearanceColor
+	rst_add_hl_a
+	ld b, [hl]
+
+	call GoDownOneLevelRow
+	
+	; Get first block
+	ld a, [de]
+	and 127
+	ld hl, BlockAppearanceColor
+	rst_add_hl_a
+	ld c, [hl]
+
+	call GoDownOneLevelRow
+	pop hl
+
+	; --- Write ---
+	push de
+	ld de, 32    ; Now BC is free so it can be used for adding to HL
+
+	wait_vram    ; Should take exactly 16 cycles - which is the amount I should get?
+	ld [hl], b   ; 2
+	set 5, l     ; 2 Move down a row
+	ld [hl], b   ; 2
+
+	add hl, de   ; 2
+	res 2, h     ; 2 Wrap vertically
+
+	ld [hl], c   ; 2
+	set 5, l     ; 2 Move down a row
+	ld [hl], c   ; 2
+
+	add hl, de
+	res 2, h     ; Wrap vertically
+
+	pop de
+	pop bc
+	dec b
+	jr nz, .loop
+	xor a
+	ldh [rVBK], a
+	ret
 
 ; -----------------------------------------------------------------------------
 
-GoDownOneLevelRow:
-	; Move down one row in level data
-	ld a, 64
-	add a,e
-	ld e,a
-	jr nc, :+
-		inc d
-	:
+ColorUpdateTopBottomRead:
+	push hl
+	; Get first block
+	ld a, [de]
+	and 127
+	inc e
+	ld hl, BlockAppearanceColor
+	rst_add_hl_a
+	ld b, [hl]
+
+	; Get second block
+	ld a, [de]
+	and 127
+	inc e
+	ld hl, BlockAppearanceColor
+	rst_add_hl_a
+	ld c, [hl]
+	pop hl
 	ret
+
+ColorUpdateTop::
+	ld b, 6
+	ld a, 1
+	ldh [rVBK], a
+.loop:
+	push bc
+	call ColorUpdateTopBottomRead
+	; Write ---------------------------
+	wait_vram
+	ld a, b      ; 1
+	ld [hl+], a  ; 2
+	ld [hl+], a  ; 2
+	res 5, l     ; 2 Wrap horizontally
+	ld a, c      ; 1
+	ld [hl+], a  ; 2
+	ld [hl+], a  ; 2
+	res 5, l     ; 2 Wrap horizontally
+	; ---------------------------------
+	pop bc
+	dec b
+	jr nz, .loop
+	xor a
+	ldh [rVBK], a
+	ret
+
+ColorUpdateBottom::
+	ld b, 6
+	ld a, 1
+	ldh [rVBK], a
+.loop:
+	push bc
+	call ColorUpdateTopBottomRead
+	; Write ---------------------------
+	wait_vram
+	ld a, b      ; 1
+	ld [hl+], a  ; 2
+	ld [hl], a  ; 2
+
+	res 5, l     ; 2 Wrap horizontally
+	inc l        ; 1
+	set 5, l     ; 2
+
+	ld a, c      ; 1
+	ld [hl+], a  ; 2
+	ld [hl], a  ; 2
+
+	res 5, l     ; 2 Wrap horizontally
+	inc l        ; 1
+	set 5, l     ; 2
+	; ---------------------------------
+	pop bc
+	dec b
+	jr nz, .loop
+	xor a
+	ldh [rVBK], a
+	ret
+
+SECTION "DrawPlayfield", ROM0
+
+; -----------------------------------------------------------------------------
 
 ScrollUpdateLeftRightRead:
 	; Get first block
@@ -47,7 +172,15 @@ ScrollUpdateLeftRightRead:
 	add a
 	ld c, a
 
-	call GoDownOneLevelRow
+	; Fall through
+GoDownOneLevelRow:
+	; Move down one row in level data
+	ld a, 64
+	add a,e
+	ld e,a
+	jr nc, :+
+		inc d
+	:
 	ret
 
 ScrollUpdateLeftRightWriteOne:
@@ -83,6 +216,8 @@ ScrollUpdateLeftRightWrite:
 
 ScrollUpdateLeft::
 	ld b, 6
+	push hl
+	push de
 .loop:
 	push bc
 	call ScrollUpdateLeftRightRead
@@ -90,10 +225,12 @@ ScrollUpdateLeft::
 	pop bc
 	dec b
 	jr nz, .loop
-	ret
+	jr ScrollUpdateRight.ColorUpdateIfColor
 
 ScrollUpdateRight::
 	ld b, 6
+	push hl
+	push de
 .loop:
 	push bc
 	call ScrollUpdateLeftRightRead
@@ -103,6 +240,12 @@ ScrollUpdateRight::
 	pop bc
 	dec b
 	jr nz, .loop
+.ColorUpdateIfColor:
+	pop de
+	pop hl
+	ldh a, [IsGameBoyColor]
+	cp $11
+	jp z, ColorUpdateLeftRight
 	ret
 
 ; -----------------------------------------------------------------------------
@@ -157,6 +300,9 @@ ScrollUpdateTop::
 	jr nz, .loop
 	pop de
 	pop hl
+	ldh a, [IsGameBoyColor]
+	cp $11
+	jp z, ColorUpdateTop
 	ret
 
 ScrollUpdateBottomWrite:
@@ -197,7 +343,12 @@ ScrollUpdateBottom::
 	jr nz, .loop
 	pop de
 	pop hl
+	ldh a, [IsGameBoyColor]
+	cp $11
+	jp z, ColorUpdateBottom
 	ret
+
+SECTION "Camera", ROM0
 
 ; -----------------------------------------------------------------------------
 

@@ -1,10 +1,11 @@
 alias bg_tiles $9000
 
 alias terrain_palette 0
-alias purple_palette 1
-alias blue_palette 2
-alias orange_palette 3
-alias parallax_palette 7
+alias wall_palette 1
+alias parallax_palette 2
+alias purple_palette 3
+alias blue_palette 4
+alias orange_palette 5
 
 #######################################
 # Floor and walls
@@ -21,6 +22,8 @@ palette terrain_palette
 
 +Floor
 q 0,2
+
+palette wall_palette
 
 +Wall
 solid
@@ -121,12 +124,12 @@ solid
 q 4,1
 
 +PrizeAnimation2
-palette terrain_palette
+palette wall_palette
 solid
 q 8,1
 
 +UsedPrize
-palette terrain_palette
+palette wall_palette
 solid
 q 12,1
 

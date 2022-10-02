@@ -71,14 +71,29 @@ SECTION "Entry point", ROM0
 EntryPoint:
 	ld sp, Playfield
 
-	ldh [IsGameBoyColor], a
-	cp $11
-	call z, InitGameBoyColor
-
+	push af
 	; Clear HRAM
 	ld hl, $ff80
 	ld c, 127
 	call memclear8
+	pop af
+
+	ldh [IsGameBoyColor], a
+	cp $11
+	jr nz, .NotGameBoyColor
+		xor a
+		ldh [rVBK], a  ; VRAM bank
+		inc a
+		ldh [rSVBK], a ; WRAM bank
+
+		xor a
+		ldh [rIE], a
+		ld a, $30
+		ldh [rP1], a
+		ld a, 1
+		ldh [rSPD], a
+		stop
+.NotGameBoyColor:
 
 	; Clear RAM (but not the return address)
 	ld hl, _RAM
@@ -103,6 +118,10 @@ EntryPoint:
 	ld hl, _VRAM9000
 	ld b, 6*16
 	call pb16_unpack_block
+
+	ldh a, [IsGameBoyColor]
+	cp $11
+	call z, UploadGameplayPalette
 
 	; ---------------------------------------------------------------
 

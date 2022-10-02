@@ -156,33 +156,42 @@ RunPlayer::
 	.NotPressingDirection:
 
 	; Flip if left
-	ld b, 0
+	ld b, PALETTE_PLAYER
 	ld a, [PlayerDrawDirection]
 	cp DIRECTION_LEFT
 	jr nz, :+
 		hswap [PlayerTile1], [PlayerTile2]
 		hswap [PlayerTile3], [PlayerTile4]
 		hswap [PlayerTile5], [PlayerTile6]
-		ld b, OAMF_XFLIP
+		ld b, OAMF_XFLIP|PALETTE_PLAYER
 	:
 
 	; B  = Attribute
-	; C  = (free)
+	; C  = Number of rows
 	; D  = X position
 	; E  = Y position
 	; HL = OAM write pointer
+
+	; Push all of the tiles first
+	ld hl, PlayerTile6
+	ld c, 6
+:  	ld a, [hl-]
+	push af
+	dec c
+	jr nz, :-
 
 	ld h, HIGH(OamBuffer)
 	ldh a, [OamWrite]
 	ld l, a
 
 ; --------------------------------
-
-	ld a, e
+	; Loop to create the OAM entries
+	ld c, 3
+:	ld a, e
 	ld [hl+], a ; Y position
 	ld a, d
 	ld [hl+], a ; X position
-	ldh a, [PlayerTile1]
+	pop af
 	ld [hl+],a ; set tile number
 	ld a, b
 	ld [hl+],a ; set attribute
@@ -192,7 +201,7 @@ RunPlayer::
 	ld a, d
 	add a, 8
 	ld [hl+], a ; X position
-	ldh a, [PlayerTile2]
+	pop af
 	ld [hl+],a ; set tile number
 	ld a, b
 	ld [hl+],a ; set attribute
@@ -201,51 +210,8 @@ RunPlayer::
 	add 8
 	ld e, a
 
-; --------------------------------
-
-	ld a, e
-	ld [hl+], a ; Y position
-	ld a, d
-	ld [hl+], a ; X position
-	ldh a, [PlayerTile3]
-	ld [hl+],a ; set tile number
-	ld a, b
-	ld [hl+],a ; set attribute
-
-	ld a, e
-	ld [hl+], a ; Y position
-	ld a, d
-	add a, 8
-	ld [hl+], a ; X position
-	ldh a, [PlayerTile4]
-	ld [hl+],a ; set tile number
-	ld a, b
-	ld [hl+],a ; set attribute
-
-	ld a, e
-	add 8
-	ld e, a
-
-; --------------------------------
-
-	ld a, e
-	ld [hl+], a ; Y position
-	ld a, d
-	ld [hl+], a ; X position
-	ldh a, [PlayerTile5]
-	ld [hl+],a ; set tile number
-	ld a, b
-	ld [hl+],a ; set attribute
-
-	ld a, e
-	ld [hl+], a ; Y position
-	ld a, d
-	add a, 8
-	ld [hl+], a ; X position
-	ldh a, [PlayerTile6]
-	ld [hl+],a ; set tile number
-	ld a, b
-	ld [hl+],a ; set attribute
+	dec c
+	jr nz, :-
 
 ; --------------------------------
 

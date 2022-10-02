@@ -63,7 +63,7 @@ def parseMetatileTile(tile, default_palette, default_base, priority=False):
 	if priority:
 		value |= 0x8000
 	# Palette
-	value |= default_palette << 10
+	value |= default_palette << 8
 
 	# Read the tile number in the format of x,y starting from the specified base
 	if tile.find(",") >= 0:
@@ -153,11 +153,11 @@ outfile.write('BlockAppearance::\n')
 for b in all_blocks:
 	outfile.write('\tdb $%.2x, $%.2x, $%.2x, $%.2x ; %s\n' % (b['tiles'][0] & 255, b['tiles'][1] & 255, b['tiles'][2] & 255, b['tiles'][3] & 255, b['name']))
 
-outfile.write('\nSECTION "BlockData", ROM0, ALIGN[4]\n\n')
+outfile.write('\nSECTION "BlockData", ROM0\n\n')
 
 outfile.write('BlockAppearanceColor::\n')
 for b in all_blocks:
-	outfile.write('\tdb $%.2x, $%.2x, $%.2x, $%.2x ; %s\n' % (b['tiles'][0] >> 8, b['tiles'][1] >> 8, b['tiles'][2] >> 8, b['tiles'][3] >> 8, b['name']))
+	outfile.write('\tdb $%.2x ; %s\n' % (b['tiles'][0] >> 8, b['name']))
 
 outfile.write('BlockFlags::\n')
 for b in all_blocks:

@@ -250,7 +250,9 @@ MACRO wait_vram
 	ldh a, [rSTAT]
 	and STATF_BUSY
 	jr nz, .waitVRAM\@
-	; Now there's 16 "safe" cycles to write during hblank
+	; Now there's 16 "safe" cycles to write during hblank.
+	; If STAT is read on the very last cycle of hblank or vblank, the OAM scan will start immediately after,
+	; and when this macro ends, you're left with 16 cycles remaining of OAM scan (which is also safe to write VRAM during)
 ENDM
 
 ; -------------------------------------
