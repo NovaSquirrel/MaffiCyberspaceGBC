@@ -144,9 +144,8 @@ CountVisitedUnvisited:
 	ld a, [hl+]
 	or a
 	jr nz, :+
-		ld a, h
-		cp HIGH(PlayfieldEnd)
-		jr nz, CountVisitedUnvisited
+		bit 5, h ; Will be 1 at PlayfieldEnd
+		jr z, CountVisitedUnvisited
 		jr .done
 	:
 	dec hl ; undo the [hl+]
@@ -188,8 +187,8 @@ CountVisitedUnvisited:
 .skip:
 	inc hl
 	ld a, h
-	cp HIGH(PlayfieldEnd)
-	jr nz, CountVisitedUnvisited
+	bit 5, h ; Will be 1 at PlayfieldEnd
+	jr z, CountVisitedUnvisited
 .done:
 	ret
 
