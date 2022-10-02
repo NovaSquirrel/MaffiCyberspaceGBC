@@ -30,7 +30,6 @@ ColorUpdateLeftRight:
 	push hl
 	; Get first block
 	ld a, [de]
-	and 127
 	ld hl, BlockAppearanceColor
 	rst_add_hl_a
 	ld b, [hl]
@@ -39,7 +38,6 @@ ColorUpdateLeftRight:
 	
 	; Get first block
 	ld a, [de]
-	and 127
 	ld hl, BlockAppearanceColor
 	rst_add_hl_a
 	ld c, [hl]
@@ -77,7 +75,6 @@ ColorUpdateLeftRight:
 ; -----------------------------------------------------------------------------
 ColorUpdateTopBottomReadOne:
 	ld a, [de]
-	and 127
 	inc e
 	ld hl, BlockAppearanceColor
 	jp $0008
