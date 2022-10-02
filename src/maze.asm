@@ -142,13 +142,20 @@ FixMazeBackward:
 	;ld de, 0 ; Visited counter
 CountVisitedUnvisited:
 	ld a, [hl+]
+	or a
+	jr nz, :+
+		ld a, h
+		cp HIGH(PlayfieldEnd)
+		jr nz, CountVisitedUnvisited
+		jr .done
+	:
+	dec hl ; undo the [hl+]
+	res 7, [hl] ; Clear "visited" flag here
 	cp BlockType_Wall
 
 	jr nz, :+
 		push bc
 		push hl
-		dec l ; Undo the hl+
-
 		ld c, 0 ; Walls
 		dec l
 		call IsWallAutotile ; Left
@@ -166,8 +173,7 @@ CountVisitedUnvisited:
 		; Store the modified wall
 		ld a, BlockType_Wall
 		add c
-		dec l
-		ld [hl+], a
+		ld [hl], a
 		pop bc
 		jr .skip
 	:
@@ -180,10 +186,11 @@ CountVisitedUnvisited:
 	;	inc de ; Add a visited floor
 	;:
 .skip:
+	inc hl
 	ld a, h
 	cp HIGH(PlayfieldEnd)
 	jr nz, CountVisitedUnvisited
-
+.done:
 	ret
 
 ; -----------------------------------------------------------------------------
