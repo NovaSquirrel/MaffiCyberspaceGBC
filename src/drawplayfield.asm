@@ -75,29 +75,37 @@ ColorUpdateLeftRight:
 	ret
 
 ; -----------------------------------------------------------------------------
+ColorUpdateTopBottomReadOne:
+	ld a, [de]
+	and 127
+	inc e
+	ld hl, BlockAppearanceColor
+	jp $0008
 
 ColorUpdateTopBottomRead:
 	push hl
 	; Get first block
-	ld a, [de]
-	and 127
-	inc e
-	ld hl, BlockAppearanceColor
-	rst_add_hl_a
+	call ColorUpdateTopBottomReadOne
 	ld b, [hl]
 
 	; Get second block
-	ld a, [de]
-	and 127
-	inc e
-	ld hl, BlockAppearanceColor
-	rst_add_hl_a
+	call ColorUpdateTopBottomReadOne
 	ld c, [hl]
+
+	; Get third block
+	call ColorUpdateTopBottomReadOne
+	ld a, [hl]
+	ldh [temp1], a
+
+	; Get fourth block
+	call ColorUpdateTopBottomReadOne
+	ld a, [hl]
+	ldh [temp2], a
 	pop hl
 	ret
 
 ColorUpdateTop::
-	ld b, 6
+	ld b, 3
 	ld a, 1
 	ldh [rVBK], a
 .loop:
@@ -110,6 +118,15 @@ ColorUpdateTop::
 	ld [hl+], a  ; 2
 	res 5, l     ; 2 Wrap horizontally
 	ld a, c      ; 1
+	ld [hl+], a  ; 2
+	ld [hl+], a  ; 2
+	res 5, l     ; 2 Wrap horizontally
+
+	ldh a, [temp1]
+	ld [hl+], a  ; 2
+	ld [hl+], a  ; 2
+	res 5, l     ; 2 Wrap horizontally
+	ldh a, [temp2]
 	ld [hl+], a  ; 2
 	ld [hl+], a  ; 2
 	res 5, l     ; 2 Wrap horizontally
@@ -122,7 +139,7 @@ ColorUpdateTop::
 	ret
 
 ColorUpdateBottom::
-	ld b, 6
+	ld b, 3
 	ld a, 1
 	ldh [rVBK], a
 .loop:
@@ -132,13 +149,30 @@ ColorUpdateBottom::
 	wait_vram
 	ld a, b      ; 1
 	ld [hl+], a  ; 2
-	ld [hl], a  ; 2
+	ld [hl], a   ; 2
 
 	res 5, l     ; 2 Wrap horizontally
 	inc l        ; 1
 	set 5, l     ; 2
 
 	ld a, c      ; 1
+	ld [hl+], a  ; 2
+	ld [hl], a   ; 2
+
+	res 5, l     ; 2 Wrap horizontally
+	inc l        ; 1
+	set 5, l     ; 2
+
+	wait_vram
+	ldh a, [temp1]
+	ld [hl+], a  ; 2
+	ld [hl], a  ; 2
+
+	res 5, l     ; 2 Wrap horizontally
+	inc l        ; 1
+	set 5, l     ; 2
+
+	ldh a, [temp2]
 	ld [hl+], a  ; 2
 	ld [hl], a  ; 2
 
