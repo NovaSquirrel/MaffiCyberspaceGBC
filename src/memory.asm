@@ -30,6 +30,8 @@ KeyRepeat::    ds 1
 PlayerDrawDirection:: ds 1
 CameraXPixel:: ds 2
 CameraYPixel:: ds 2
+DoUpdateRow::    ds 1
+DoUpdateColumn:: ds 1
 
 SECTION "Queue", WRAM0, ALIGN[8]
 	UNION     ; Flood fill mode

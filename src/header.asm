@@ -156,6 +156,9 @@ EntryPoint:
 	ld a, 32
 	ldh [PlayerPXH], a
 	ldh [PlayerPYH], a
+	ld a, 255
+	ld [DoUpdateRow], a
+	ld [DoUpdateColumn], a
 	call InitCamera
 	call RenderLevelScreen
 forever:
@@ -171,6 +174,24 @@ forever:
 
 	ld a, OamBuffer>>8
 	call RunOamDMA
+
+	ld a, [DoUpdateRow]
+	rlca
+	jr c, :+
+		rrca
+		call UpdateRow
+		ld a, 255
+		ld [DoUpdateRow], a
+	:
+
+	ld a, [DoUpdateColumn]
+	rlca
+	jr c, :+
+		rrca
+		call UpdateColumn
+		ld a, 255
+		ld [DoUpdateColumn], a
+	:
 
 	; .----------------------
 	; | Game logic

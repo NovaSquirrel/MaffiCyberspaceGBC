@@ -527,11 +527,13 @@ AdjustCamera::
 		jr c, .UpdateLeft
 	.UpdateRight:
 		add 20
-		call UpdateColumn
+		;call UpdateColumn
+		ld [DoUpdateColumn], a
 		jr .NoUpdateColumn
 	.UpdateLeft:
 		dec a
-		call UpdateColumn
+		;call UpdateColumn
+		ld [DoUpdateColumn], a
 	.NoUpdateColumn:
 
 	ld hl, CameraY
@@ -555,10 +557,12 @@ AdjustCamera::
 		jr c, .UpdateUp
 	.UpdateDown:
 		add 18
-		call UpdateRow
+		;call UpdateRow
+		ld [DoUpdateRow], a
 		jr .NoUpdateRow
 	.UpdateUp:
-		call UpdateRow
+		;call UpdateRow
+		ld [DoUpdateRow], a
 	.NoUpdateRow:
 
 ; ---------------------------------------
@@ -597,7 +601,7 @@ CameraConvertY:
 	ret
 
 ; Update a row of tiles (for scrolling)
-UpdateRow:
+UpdateRow::
 	ld b, a ; Tile to update, vertically
 
 	; Get a VRAM address to update first
@@ -634,7 +638,7 @@ UpdateRow:
 	jp ScrollUpdateTop
 
 ; Update a column of tiles (for scrolling)
-UpdateColumn:
+UpdateColumn::
 	ld b, a ; Tile to update, horizontally
 
 	; Get a VRAM address to update first
