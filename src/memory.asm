@@ -32,6 +32,11 @@ CameraXPixel:: ds 2
 CameraYPixel:: ds 2
 DoUpdateRow::    ds 1
 DoUpdateColumn:: ds 1
+ParallaxSource:: ds 2
+
+SECTION "ParallaxRAM", WRAM0, ALIGN[4]
+ParallaxShifts::
+	ds 256    ; 16 * 8 (with each tile repeated twice)
 
 SECTION "Queue", WRAM0, ALIGN[8]
 	UNION     ; Flood fill mode

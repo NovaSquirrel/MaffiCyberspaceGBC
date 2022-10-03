@@ -567,8 +567,22 @@ AdjustCamera::
 
 ; ---------------------------------------
 
+	; Fall through
 CameraConvertXY:
-	call CameraConvertY
+CameraConvertY:
+	; Convert camera to pixel coordinates
+	ldh a, [CameraY+1]
+	ld b, a
+	ldh a, [CameraY+0]
+	rept 4
+		srl b
+		rra
+	endr
+	adc 0
+	ld [CameraYPixel+0], a
+	ld a, b
+	ld [CameraYPixel+1], a
+
 	; Fall through
 CameraConvertX:
 	; Convert camera to pixel coordinates
@@ -583,21 +597,36 @@ CameraConvertX:
 	ld [CameraXPixel+0], a
 	ld a, b
 	ld [CameraXPixel+1], a
-	ret
 
-CameraConvertY:
-	; Convert camera to pixel coordinates
-	ldh a, [CameraY+1]
-	ld b, a
-	ldh a, [CameraY+0]
-	rept 4
-		srl b
-		rra
-	endr
-	adc 0
-	ld [CameraYPixel+0], a
-	ld a, b
-	ld [CameraYPixel+1], a
+	; Calculate pointer for parallax effect
+	; X part
+	ld a, [CameraXPixel+0]
+	rrca
+	and 7
+	ld h, 0
+	ld l, a
+	add hl, hl ; * 32
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl
+
+	; Y part
+	ld a, [CameraYPixel+0]
+	rrca
+	cpl
+	inc a
+	and 7
+	add a
+	rst_add_hl_a
+
+	; Write the pointer
+	ld de, ParallaxShifts
+	add hl, de
+	ld a, l
+	ld [ParallaxSource+0], a
+	ld a, h
+	ld [ParallaxSource+1], a
 	ret
 
 ; Update a row of tiles (for scrolling)

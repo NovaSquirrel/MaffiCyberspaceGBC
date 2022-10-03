@@ -100,6 +100,8 @@ EntryPoint:
 	ld bc, 4096-2
 	call memclear
 
+	call InitParallax
+
 	; Copy in DMA routine
 	ld hl, oam_dma_routine
 	ld de, RunOamDMA
@@ -159,6 +161,12 @@ EntryPoint:
 	ld a, 255
 	ld [DoUpdateRow], a
 	ld [DoUpdateColumn], a
+
+	ld a, LOW(ParallaxShifts)
+	ld [ParallaxSource+0], a
+	ld a, HIGH(ParallaxShifts)
+	ld [ParallaxSource+1], a
+
 	call InitCamera
 	call RenderLevelScreen
 forever:
@@ -174,6 +182,22 @@ forever:
 
 	ld a, OamBuffer>>8
 	call RunOamDMA
+
+	; Parallax upload
+	ld hl, ParallaxSource
+	ld a, [hl+]
+	ld h, [hl]
+	ld l, a
+	ld de, $9000
+	ld b, 4
+:	; Semi-unrolled loop
+	rept 4
+	ld a, [hl+]
+	ld [de], a
+	inc e
+	endr
+	dec b
+	jr nz, :-
 
 	ld a, [DoUpdateRow]
 	rlca

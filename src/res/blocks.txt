@@ -16,7 +16,8 @@ palette parallax_palette
 
 +Empty
 solid
-q 0,0
+t 0,0 0,0
+t 0,0 0,0
 
 palette terrain_palette
 
