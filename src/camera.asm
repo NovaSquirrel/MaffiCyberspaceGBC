@@ -35,15 +35,19 @@ GetCameraTargetX:
 	ld e, a
 	ldh a, [PlayerPXH]
 	sub 10/2
+	ld b, 64-10
+	; Fall through
+CameraTargetClamp:
+	; B = Target maximum
 	jr nc, :+
 		xor a
 		ld e, a
 	:
-	cp 64-10
+	cp b
 	jr c, :+
 		xor a
 		ld e, a
-		ld a, 64-10
+		ld a, b
 	:
 	ld d, a
 	ret
@@ -53,18 +57,8 @@ GetCameraTargetY:
 	ld e, a
 	ldh a, [PlayerPYH]
 	sub 9/2
-	jr nc, :+
-		xor a
-		ld e, a
-	:
-	cp 64-9
-	jr c, :+
-		xor a
-		ld e, a
-		ld a, 64-9
-	:
-	ld d, a
-	ret
+	ld b, 64-9
+	jr CameraTargetClamp
 
 InitCamera::
 	call GetCameraTargetX
@@ -81,6 +75,17 @@ InitCamera::
 
 	jp CameraConvertXY
 
+AdjustCameraSharedSubtractTarget:
+	ld h, a
+	; ---
+	ld a, e
+	sub l
+	ld l, a
+	ld a, d
+	sbc h
+	ld h, a
+	ret
+
 AdjustCamera::
 	; Get scroll target
 	call GetCameraTargetX
@@ -90,14 +95,7 @@ AdjustCamera::
 	ldh [OldCameraX], a
 	ld l, a
 	ldh a, [CameraX+1]
-	ld h, a
-	; ---
-	ld a, e
-	sub l
-	ld l, a
-	ld a, d
-	sbc h
-	ld h, a
+	call AdjustCameraSharedSubtractTarget
 	ldh [CameraDXH], a
 
 	; Divide by 4
@@ -121,14 +119,7 @@ AdjustCamera::
 	ldh [OldCameraY], a
 	ld l, a
 	ldh a, [CameraY+1]
-	ld h, a
-	; ---
-	ld a, e
-	sub l
-	ld l, a
-	ld a, d
-	sbc h
-	ld h, a
+	call AdjustCameraSharedSubtractTarget
 	ldh [CameraDYH], a
 
 	call DivideDifferenceForLerp
@@ -194,8 +185,7 @@ AdjustCamera::
 		jr c, .UpdateUp
 	.UpdateDown:
 		add 18
-		ld [DoUpdateRow], a
-		jr .NoUpdateRow
+		; Fall through
 	.UpdateUp:
 		ld [DoUpdateRow], a
 	.NoUpdateRow:
