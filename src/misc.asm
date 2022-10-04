@@ -118,35 +118,21 @@ ReadKeys::
   ldh a, [KeyDown]
   ldh [KeyLast], a
 
-  ld c, LOW(rP1)
   ld a, P1F_GET_BTN
-  ldh [$ff00+c], a
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
+  call .onenibble
   and $f
   ld b, a
 
   ld a, P1F_GET_DPAD
-  ldh [$ff00+c], a
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
-  ldh a, [$ff00+c]
+  call .onenibble
   and $f
   swap a
   or b
   cpl
   ldh [KeyDown], a
+
+  ld a,P1F_GET_NONE ; Stop asking for any keys
+  ldh [rP1],a
 
   ldh a, [KeyLast]
   cpl
@@ -154,6 +140,15 @@ ReadKeys::
   ldh a, [KeyDown]
   and b
   ldh [KeyNew], a
+  ret
+
+.onenibble:
+  ldh [rP1],a     ; switch the key matrix
+  call .knownret  ; burn 10 cycles calling a known ret
+  ldh a,[rP1]     ; ignore value while waiting for the key matrix to settle
+  ldh a,[rP1]
+  ldh a,[rP1]     ; this read counts
+.knownret:
   ret
 
 DoKeyRepeat::
