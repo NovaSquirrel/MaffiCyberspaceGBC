@@ -352,4 +352,23 @@ DivideDifferenceForLerp:
 	rra
 	endr
 	ld l, a
+
+	; Is this result too small?
+	ld a, h
+	or a
+	jr z, .High00
+    inc a ; Check if FF
+    ret nz
+.HighFF:
+	ld a, l
+	cp 256-2 ; Anything except FE or FF is OK
+	jr nc, .DontMoveCamera
+	ret
+.High00:
+	ld a, l
+    cp 3 ; Anything except 0 1 or 2 is OK
+	ret nc
+.DontMoveCamera:
+	ld h, 0
+	ld l, h
 	ret
