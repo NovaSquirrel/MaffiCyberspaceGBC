@@ -1,5 +1,5 @@
 ; Maffi cyberspace game
-; Copyright (C) 2022 NovaSquirrel
+; Copyright (C) 2022, 2024 NovaSquirrel
 ;
 ; This program is free software: you can redistribute it and/or
 ; modify it under the terms of the GNU General Public License as
@@ -28,6 +28,7 @@ SECTION "DrawPlayfield", ROM0
 ; '-----------------------------------------------------------------------------
 
 ; Update a row of tiles (for scrolling)
+; Input: A (Row to update)
 UpdateRow::
 	ld b, a ; Which row of tiles to update within the level
 
@@ -43,7 +44,7 @@ UpdateRow::
 		sub 2 ; Go left two blocks
 	:
 	ld c, a   ; Will be used as a level data X coordinate
-	and 31
+	and 31    ; Add horizontal offset to tilemap address
 	add l
 	ld l, a
 
@@ -54,7 +55,7 @@ UpdateRow::
 	srl d
 	ld e, b
 	srl e
-	call MapPointerDE_XY
+	call MapPointerDE_XY ; HL = pointer to level byte at D,E
 	ld d, h
 	ld e, l
 	pop hl
@@ -65,6 +66,7 @@ UpdateRow::
 	jp ScrollUpdateTop
 
 ; Update a column of tiles (for scrolling)
+; Input: A (Row to update)
 UpdateColumn::
 	ld b, a ; Which column of tiles to update within the level
 
@@ -80,7 +82,7 @@ UpdateColumn::
 	ld c, a   ; Will be used as a level data Y coordinate
 	call GetTilemapRowAddress ; HL = VRAM address
 
-	; Next, offset to the correct column
+	; Next, offset to the correct tilemap column
 	ld a, b
 	and 31
 	add l
@@ -94,7 +96,7 @@ UpdateColumn::
 	srl d
 	ld e, c
 	srl e
-	call MapPointerDE_XY
+	call MapPointerDE_XY ; HL = pointer to level byte at D,E
 	ld d, h
 	ld e, l
 	pop hl
@@ -147,7 +149,7 @@ RenderLevelScreen::
 ScrollUpdateLeftRightRead:
 	; Get first block
 	ld a, [de]
-	add a ; *4, four bytes per block
+	add a ; Four bytes per block in BlockAppearance table, so multiply by 4
 	add a
 	ld b, a
 
@@ -155,7 +157,7 @@ ScrollUpdateLeftRightRead:
 	
 	; Get second block
 	ld a, [de]
-	add a ; *4, four bytes per block
+	add a ; Four bytes per block in BlockAppearance table, so multiply by 4
 	add a
 	ld c, a
 	fallthrough GoDownOneLevelRow
@@ -247,20 +249,20 @@ ScrollUpdateTopBottomRead:
 	; Get first block
 	ld a, [de]
 	inc e
-	add a ; *4, four bytes per block
+	add a ; Four bytes per block in BlockAppearance table, so multiply by 4
 	add a
 	ld b, a
 
 	; Get second block
 	ld a, [de]
 	inc e
-	add a ; *4, four bytes per block
+	add a ; Four bytes per block in BlockAppearance table, so multiply by 4
 	add a
 	ld c, a
 	ret
 
 ; Write the top two tile numbers of a block to VRAM
-ScrollUpdateTopWrite:
+MACRO ScrollUpdateTopWrite
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl+], a  ; 2
@@ -268,8 +270,9 @@ ScrollUpdateTopWrite:
 	ld a, [de]   ; 2
 	ld [hl+], a  ; 2
 	res 5, l     ; 2 Wrap horizontally
-	ret
+ENDM
 
+; Input: HL (VRAM pointer), DE (Level pointer)
 ScrollUpdateTop::
 	ld b, 6 ; 6 units of 2 blocks each
 	push hl
@@ -284,9 +287,9 @@ ScrollUpdateTop::
 	push de
 	ld d, HIGH(BlockAppearance)
 	ld e, b
-	call ScrollUpdateTopWrite
+	ScrollUpdateTopWrite
 	ld e, c
-	call ScrollUpdateTopWrite
+	ScrollUpdateTopWrite
 
 	pop de
 	pop bc
@@ -301,7 +304,7 @@ ScrollUpdateTop::
 	ret
 
 ; Write the bottom two tile numbers of a block to VRAM
-ScrollUpdateBottomWrite:
+MACRO ScrollUpdateBottomWrite
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl+], a  ; 2
@@ -311,8 +314,9 @@ ScrollUpdateBottomWrite:
 	res 5, l     ; 2 Wrap horizontally
 	inc l        ; 1
 	set 5, l     ; 2
-	ret
+ENDM
 
+; Input: HL (VRAM pointer), DE (Level pointer)
 ScrollUpdateBottom::
 	ld b, 6 ; 6 units of 2 blocks each
 	push hl
@@ -329,9 +333,9 @@ ScrollUpdateBottom::
 	push de
 	ld d, HIGH(BlockAppearance)
 	ld e, b
-	call ScrollUpdateBottomWrite
+	ScrollUpdateBottomWrite
 	ld e, c
-	call ScrollUpdateBottomWrite
+	ScrollUpdateBottomWrite
 
 	pop de
 	pop bc
