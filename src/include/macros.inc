@@ -13,7 +13,7 @@ MACRO enum_start
 ENDM
 
 MACRO enum_set
-enum_value = \1
+def enum_value = \1
 ENDM
 
 MACRO enum_skip
@@ -21,7 +21,7 @@ MACRO enum_skip
 ENDM
 
 MACRO enum_elem
-\1 = enum_value
+def \1 = enum_value
 	enum_skip
 ENDM
 
@@ -358,3 +358,6 @@ MACRO rst38cc
 	jr \1, @ + 1
 ENDM
 
+macro fallthrough
+  assert (\1) == @
+endm

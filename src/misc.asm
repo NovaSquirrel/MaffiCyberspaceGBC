@@ -197,8 +197,8 @@ ClearNametable::
   jp memset
 
 ClearAttributes::
-  ldh a, [IsGameBoyColor]
-  cp $11
+  ldh a, [IsNotGameBoyColor]
+  or a
   ret nz
   vram_bank_1
   ld hl, _SCRN0

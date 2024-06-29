@@ -103,7 +103,7 @@ RunPlayer::
 	; Adjust for the pose
 	ld hl, HorizontalOffsetForPose
 	ld a, [PlayerDrawDirection]
-	rst_add_hl_a
+	add_hl_a
 	ld a, d
 	add [hl]
 	ld d, a
@@ -124,9 +124,13 @@ RunPlayer::
 
 	; Get the six tiles for the direction
 	ld a, [PlayerDrawDirection]
-	ld hl, FirstTileForPose
+	ld hl, PlayerFrameForPose
 	rst_add_hl_a
 	ld a, [hl]
+	ld [PlayerAnimationFrame], a
+
+	; Set up PlayerTile1 through PlayerTile6 with 0-5
+	xor a
 	ld hl, PlayerTile1
 	ld b, 6
 :	ld [hl+], a
@@ -145,14 +149,10 @@ RunPlayer::
 		rst_add_hl_a
 		ld c, [hl]
 
-		; Add offset to bottom two tiles
-		ld hl, PlayerTile5
-		ld a, [hl]
+		; Offset the animation frame number
+		ld a, [PlayerAnimationFrame]
 		add c
-		ld [hl+], a
-		ld a, [hl]
-		add c
-		ld [hl+], a
+		ld [PlayerAnimationFrame], a
 	.NotPressingDirection:
 
 	; Flip if left
@@ -185,8 +185,48 @@ RunPlayer::
 	ld l, a
 
 ; --------------------------------
+	; Add extra sprite first
+
+	ld a, [PlayerDrawDirection]
+	cp DIRECTION_UP
+	jr z, NoFaceSprite
+	cp DIRECTION_DOWN
+	jr z, FaceSpriteDown
+	FaceSpriteLeftRight:
+		ld a, e
+		add 4
+		ld [hl+], a ; Y position
+
+		ld a, d
+		add 2
+		bit 5, b    ; Check X flip bit in attribute
+		jr nz, :+
+			add 4
+		:
+		ld [hl+], a ; X position
+
+		ld a, 6 ; Tile
+		jr FaceSpriteFinish
+	FaceSpriteDown:
+		ld a, e
+		add 5
+		ld [hl+], a ; Y position
+		ld a, d
+		add 2
+		ld [hl+], a ; X position
+
+		ld a, 7 ; Tile
+	FaceSpriteFinish:
+		ld [hl+], a ; tile number
+		ld a, b
+		dec a
+		ld [hl+], a ; attribute
+	NoFaceSprite:
+
+	; Now add the rest of the player
+
 	; Loop to create the OAM entries
-	ld c, 3
+	ld c, 3     ; 3 rows
 :	ld a, e
 	ld [hl+], a ; Y position
 	ld a, d
@@ -206,7 +246,7 @@ RunPlayer::
 	ld a, b
 	ld [hl+],a ; set attribute
 
-	ld a, e
+	ld a, e    ; go down 8 pixels
 	add 8
 	ld e, a
 
@@ -219,10 +259,10 @@ RunPlayer::
 	ldh [OamWrite], a
 	ret
 
-FirstTileForPose:
-	db 0, 16, 0, 32
+PlayerFrameForPose:
+	db PLAYER_FRAME_R, PLAYER_FRAME_D, PLAYER_FRAME_R, PLAYER_FRAME_U
 WalkCycle:
-	db 0, 2, 0, 4
+	db 0, 1, 0, 2
 HorizontalOffsetForPose:
 	db -2, 2, 2, -2
 
@@ -238,3 +278,20 @@ SharedCameraSubtractCode:
 	adc 0
 	; A = low half of BC>>4
 	ret
+
+	enum_start
+	enum_elem PLAYER_FRAME_R
+	enum_elem PLAYER_FRAME_R2
+	enum_elem PLAYER_FRAME_R3
+	enum_elem PLAYER_FRAME_D
+	enum_elem PLAYER_FRAME_D2
+	enum_elem PLAYER_FRAME_D3
+	enum_elem PLAYER_FRAME_U
+	enum_elem PLAYER_FRAME_U2
+	enum_elem PLAYER_FRAME_U3
+
+SECTION "PlayerGraphics", ROMX, ALIGN[4]
+PlayerAnimationFrameGraphics::
+	incbin "res/tilesets/MaffiWalkR.2bpp"
+	incbin "res/tilesets/MaffiWalkD.2bpp"
+	incbin "res/tilesets/MaffiWalkU.2bpp"

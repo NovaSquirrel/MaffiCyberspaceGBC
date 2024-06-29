@@ -8,7 +8,7 @@ temp5:: ds 1
 temp6:: ds 1
 temp7:: ds 1
 temp8:: ds 1
-IsGameBoyColor:: ds 1
+IsNotGameBoyColor:: ds 1 ; Zero if it IS a Game Boy Color, nonzero if not
 framecount:: ds 1
 RunOamDMA::  ds 8 ; OAM DMA routine
 OamWrite:: ds 1 ; OAM write pointer
@@ -28,6 +28,7 @@ NegativeCameraY::   ds 2
 SECTION "BSS", WRAM0
 KeyRepeat::    ds 1
 PlayerDrawDirection:: ds 1
+PlayerAnimationFrame:: ds 1
 CameraXPixel:: ds 2
 CameraYPixel:: ds 2
 DoUpdateRow::    ds 1

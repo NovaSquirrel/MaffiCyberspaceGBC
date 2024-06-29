@@ -24,7 +24,9 @@ OLDLIC := 0x33
 # MBC type, tells which hardware is in the cart
 # See https://gbdev.io/pandocs/#_0147-cartridge-type or consult any copy of Pan Docs
 # If using no MBC, consider enabling `-t` below
-MBC := 0x00
+
+# 0x19 is MBC5 with no battery, which feels like the "default" choice
+MBC := 0x19
 
 # ROM size is set automatically by RGBFIX
 
@@ -63,4 +65,4 @@ FIXFLAGS += -c
 # LDFLAGS += -w
 
 # 32k mode
-LDFLAGS += -t
+# LDFLAGS += -t

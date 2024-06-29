@@ -27,8 +27,18 @@ SECTION "rst08", ROM0[$0008]
 	inc h
 	ret
 SECTION "rst10", ROM0[$0010]
+MemcpySmall::
+	ld a, [de]
+	ld [hli], a
+	inc de
+	dec c
+	jr nz, MemcpySmall
 	ret
 SECTION "rst18", ROM0[$0018]
+MemsetSmall::
+	ld [hli], a
+	dec c
+	jr nz, MemsetSmall
 	ret
 SECTION "rst20", ROM0[$0020]
 	ret
@@ -78,8 +88,8 @@ EntryPoint:
 	call memclear8
 	pop af
 
-	ldh [IsGameBoyColor], a
-	cp $11
+	sub $11
+	ldh [IsNotGameBoyColor], a
 	jr nz, .NotGameBoyColor
 		xor a
 		ldh [rVBK], a  ; VRAM bank
@@ -121,8 +131,8 @@ EntryPoint:
 	ld b, 6*16
 	call pb16_unpack_block
 
-	ldh a, [IsGameBoyColor]
-	cp $11
+	ldh a, [IsNotGameBoyColor]
+	or a
 	call z, UploadGameplayPalette
 
 	; ---------------------------------------------------------------
@@ -148,89 +158,7 @@ EntryPoint:
 	ld bc, 1234
 	call SeedRandomLCG
 
-	call GenerateMaze
-
-	call ClearAndWriteOAM
-	call ScreenOn
-
-; -------------------------------------------------------------------------
-; Main loop
-	ld a, 32
-	ldh [PlayerPXH], a
-	ldh [PlayerPYH], a
-	ld a, 255
-	ld [DoUpdateRow], a
-	ld [DoUpdateColumn], a
-
-	ld a, LOW(ParallaxShifts)
-	ld [ParallaxSource+0], a
-	ld a, HIGH(ParallaxShifts)
-	ld [ParallaxSource+1], a
-
-	call InitCamera
-	call RenderLevelScreen
-forever:
-	; .----------------------
-	; | Vblank
-	; '----------------------
-	call WaitVblank
-
-	ld a, [CameraXPixel]
-	ldh [rSCX], a
-	ld a, [CameraYPixel]
-	ldh [rSCY], a
-
-	ld a, OamBuffer>>8
-	call RunOamDMA
-
-	; Parallax upload
-	ld hl, ParallaxSource
-	ld a, [hl+]
-	ld h, [hl]
-	ld l, a
-	ld de, $9000
-	ld b, 4
-:	; Semi-unrolled loop
-	rept 4
-	ld a, [hl+]
-	ld [de], a
-	inc e
-	endr
-	dec b
-	jr nz, :-
-
-	ld a, [DoUpdateRow]
-	rlca
-	jr c, :+
-		rrca
-		call UpdateRow
-		ld a, 255
-		ld [DoUpdateRow], a
-	:
-
-	ld a, [DoUpdateColumn]
-	rlca
-	jr c, :+
-		rrca
-		call UpdateColumn
-		ld a, 255
-		ld [DoUpdateColumn], a
-	:
-
-	; .----------------------
-	; | Game logic
-	; '----------------------
-	call ReadKeys
-	call ClearOAM
-
-	xor a
-	ldh [OamWrite], a
-
-	call RunPlayer
-
-	call AdjustCamera
-
-	jp forever
+	jp StartLevel
 
 SECTION "OamCode", ROM0
 

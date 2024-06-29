@@ -20,7 +20,7 @@ include "res/blockenum.inc"
 
 SECTION "Maze", ROM0
 
-FLOOD_VISITED = 128
+def FLOOD_VISITED = 128
 
 def FloodFillReadIndex  equs "temp1"
 def FloodFillWriteIndex equs "temp2"

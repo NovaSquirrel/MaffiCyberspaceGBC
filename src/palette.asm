@@ -20,8 +20,8 @@ include "include/macros.inc"
 SECTION "Palette", ROM0
 
 UploadGameplayPalette::
-  ldh a, [IsGameBoyColor]
-  cp $11
+  ldh a, [IsNotGameBoyColor]
+  or a
   ret nz
 
   ld a, BCPSF_AUTOINC   ; index zero, auto increment
@@ -121,13 +121,13 @@ Sprite_Palette:
   rgb  0,  0,  0
   rgb  0,  0,  0
   rgb  0,  0,  0
-; 6
+; 6 Maffi's eyes and nose
   rgb  0,  0,  0
-  rgb  0,  0,  0
-  rgb  0,  0,  0
-  rgb  0,  0,  0
+  rgb 30, 15, 12 ; Pink
+  rgb 17, 18, 31 ; Blue
+  rgb 31, 31, 31 ; White
 ; 7 Maffi
   rgb  0,  0,  0
-  rgb  6,  6,  6
-  rgb  15-3, 8-3,  31-3
-  rgb  24-2, 24-2, $14 ;24-2
+  rgb  6,  6,  6              ; Black
+  rgb  15-3, 8-3,  31-3       ; Purple
+  rgb  24-2, 24-2, $14 ;24-2  ; Light gray
