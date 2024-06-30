@@ -16,15 +16,16 @@
 ;
 
 ; This file has routines for displaying a level and redrawing the map as you walk around it.
-; It can handle a maximum of 64 different block types, where each block uses a single attribute byte.
+; It can handle a selectable maximum of 64 or 256 block types, and each block has the same attribute byte for all four tiles.
 
 include "include/macros.inc"
 include "include/hardware.inc/hardware.inc"
+include "res/blockenum.inc" ; for ONLY_64_BLOCK_TYPES and PAGE_ALIGNED_BLOCK_DATA
 
-SECTION "DrawPlayfield", ROM0
+SECTION "DrawPlayfield", ROMX,BANK[1]
 
 ; .-----------------------------------------------------------------------------
-; | UpdateRow and UpdateColumn
+; | The public interface (UpdateRow, UpdateColumn, RenderLevelScreen)
 ; '-----------------------------------------------------------------------------
 
 ; Update a row of tiles (for scrolling)
@@ -32,6 +33,7 @@ SECTION "DrawPlayfield", ROM0
 UpdateRow::
 	ld b, a ; Which row of tiles to update within the level
 
+	; -------------------------------------------
 	; Calculate the VRAM address of the first tile to update
 
 	call GetTilemapRowAddress ; HL = VRAM address
@@ -50,7 +52,9 @@ UpdateRow::
 
 	; -------------------------------------------
 	; Calculate map data pointer
+
 	push hl
+	; Divide coordinates by 2 because they need to be 16 pixel units, but they start as 8 pixel units
 	ld d, c
 	srl d
 	ld e, b
@@ -70,6 +74,7 @@ UpdateRow::
 UpdateColumn::
 	ld b, a ; Which column of tiles to update within the level
 
+	; -------------------------------------------
 	; Calculate the VRAM address of the first tile to update
 
 	; First, get the row address, going slightly above the camera, unless doing so would go outside the level
@@ -92,6 +97,7 @@ UpdateColumn::
 	; Calculate map data pointer
 
 	push hl
+	; Divide coordinates by 2 because they need to be 16 pixel units, but they start as 8 pixel units
 	ld d, b
 	srl d
 	ld e, c
@@ -105,22 +111,6 @@ UpdateColumn::
 	srl b
 	jp c, ScrollUpdateRight
 	jp ScrollUpdateLeft
-
-; Get address of a row of tiles on the tilemap, starting from a tile row number across the whole level
-GetTilemapRowAddress:
-	and 31
-	ld l, a
-	ld h, 0
-	; Multiply by 5
-	add hl, hl
-	add hl, hl
-	add hl, hl
-	add hl, hl
-	add hl, hl
-
-	ld de, _SCRN0
-	add hl, de
-	ret
 
 ; Render a whole screen worth of level tiles
 RenderLevelScreen::
@@ -140,6 +130,23 @@ RenderLevelScreen::
 	jr nz, .loop
 	ret
 
+; Get address of a row of tiles on the tilemap, starting from a tile row number across the whole level
+; Input: A (Tilemap row number)
+; Output: HL (VRAM pointer)
+GetTilemapRowAddress:
+	and 31
+	ld l, a
+	ld h, 0
+	; Multiply by 5
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl
+
+	ld de, _SCRN0
+	add hl, de
+	ret
 ; .----------------------------------------------------------------------------
 ; | Update tile numbers for columns
 ; '----------------------------------------------------------------------------
@@ -149,16 +156,20 @@ RenderLevelScreen::
 ScrollUpdateLeftRightRead:
 	; Get first block
 	ld a, [de]
-	add a ; Four bytes per block in BlockAppearance table, so multiply by 4
-	add a
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		add a ; Four bytes per block in BlockAppearance table, so multiply by 4
+		add a
+	endc
 	ld b, a
 
 	call GoDownOneLevelRow
 	
 	; Get second block
 	ld a, [de]
-	add a ; Four bytes per block in BlockAppearance table, so multiply by 4
-	add a
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		add a ; Four bytes per block in BlockAppearance table, so multiply by 4
+		add a
+	endc
 	ld c, a
 	fallthrough GoDownOneLevelRow
 
@@ -173,23 +184,34 @@ GoDownOneLevelRow:
 	inc d
 	ret
 
-; Write the top left and bottom left, or top right and bottom right
+; Write the left or right half of a block to VRAM
+; Input: HL (VRAM pointer), DE (Block appearance pointer)
 ScrollUpdateLeftRightWriteOne:
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
 	set 5, l     ; 2 Move down a row
-	set 1, e     ; 2
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		set 1, e ; 2
+	ELSE
+		set 1, d ; 2
+	ENDC
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
 	ret
 
+; Input: HL (VRAM pointer) B,C (Two block IDs multiplied by 4, if 64 blocks mode)
 ScrollUpdateLeftRightWrite:
-	push de
-	ld d, HIGH(BlockAppearance)
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		push de
+		ld d, HIGH(BlockAppearance)
+	ENDC
 
 	ld e, b
 	call ScrollUpdateLeftRightWriteOne
+	IF !DEF(ONLY_64_BLOCK_TYPES)
+		res 1, d ; Clean up
+	ENDC
 
 	ld e, c
 
@@ -202,32 +224,51 @@ ScrollUpdateLeftRightWrite:
 	add hl, bc
 	res 2, h     ; Wrap vertically
 
-	pop de
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		pop de
+	ENDC
 	ret
 
-ScrollUpdateLeft::
+; Input: HL (VRAM pointer), DE (Level pointer)
+ScrollUpdateLeft:
 	ld b, 6 ; 6 units of 2 blocks each
 	push hl
 	push de
 .loop:
 	push bc
 	call ScrollUpdateLeftRightRead
+	IF !DEF(ONLY_64_BLOCK_TYPES)
+		push de	
+		ld d, HIGH(BlockAppearance)
+	ENDC
 	call ScrollUpdateLeftRightWrite
+	IF !DEF(ONLY_64_BLOCK_TYPES)
+		pop de
+	ENDC
 	pop bc
 	dec b
 	jr nz, .loop
 	jr ScrollUpdateRight.ColorUpdateIfColor
 
-ScrollUpdateRight::
+; Input: HL (VRAM pointer), DE (Level pointer)
+ScrollUpdateRight:
 	ld b, 6 ; 6 units of 2 blocks each
 	push hl
 	push de
 .loop:
 	push bc
 	call ScrollUpdateLeftRightRead
-	inc b ; Use the top right and bottom right
-	inc c ; Use the top right and bottom right
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		inc b ; Use the top right and bottom right
+		inc c ; Use the top right and bottom right
+	ELSE
+		push de
+		ld d, HIGH(BlockAppearance + 256)
+	ENDC
 	call ScrollUpdateLeftRightWrite
+	IF !DEF(ONLY_64_BLOCK_TYPES)
+		pop de
+	ENDC
 	pop bc
 	dec b
 	jr nz, .loop
@@ -249,38 +290,47 @@ ScrollUpdateTopBottomRead:
 	; Get first block
 	ld a, [de]
 	inc e
-	add a ; Four bytes per block in BlockAppearance table, so multiply by 4
-	add a
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		add a ; Four bytes per block in BlockAppearance table, so multiply by 4
+		add a
+	ENDC
 	ld b, a
 
 	; Get second block
 	ld a, [de]
 	inc e
-	add a ; Four bytes per block in BlockAppearance table, so multiply by 4
-	add a
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		add a ; Four bytes per block in BlockAppearance table, so multiply by 4
+		add a
+	ENDC
 	ld c, a
 	ret
 
 ; Write the top two tile numbers of a block to VRAM
+; Input: HL (VRAM pointer) E (BlockAppearance index)
 MACRO ScrollUpdateTopWrite
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl+], a  ; 2
-	inc e        ; 1
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		inc e    ; 1
+	ELSE
+		inc d    ; 1
+	ENDC
 	ld a, [de]   ; 2
 	ld [hl+], a  ; 2
 	res 5, l     ; 2 Wrap horizontally
 ENDM
 
 ; Input: HL (VRAM pointer), DE (Level pointer)
-ScrollUpdateTop::
+ScrollUpdateTop:
 	ld b, 6 ; 6 units of 2 blocks each
 	push hl
 	push de
 .loop:
 	push bc
 
-	; Preload block IDs into B and C, multiplied by 4 to index into the block data table
+	; Preload block IDs into B and C, multiplied by 4 (if 64 blocks mode) to index into the block data table
 	call ScrollUpdateTopBottomRead
 
 	; Write ---------------------------
@@ -288,6 +338,9 @@ ScrollUpdateTop::
 	ld d, HIGH(BlockAppearance)
 	ld e, b
 	ScrollUpdateTopWrite
+	IF !DEF(ONLY_64_BLOCK_TYPES)
+		dec d
+	ENDC
 	ld e, c
 	ScrollUpdateTopWrite
 
@@ -304,11 +357,16 @@ ScrollUpdateTop::
 	ret
 
 ; Write the bottom two tile numbers of a block to VRAM
+; Input: HL (VRAM pointer) E (BlockAppearance index)
 MACRO ScrollUpdateBottomWrite
 	wait_vram
 	ld a, [de]   ; 2
 	ld [hl+], a  ; 2
-	inc e        ; 1
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		inc e    ; 1
+	ELSE
+		inc d    ; 1
+	ENDC
 	ld a, [de]   ; 2
 	ld [hl], a   ; 2
 	res 5, l     ; 2 Wrap horizontally
@@ -317,23 +375,32 @@ MACRO ScrollUpdateBottomWrite
 ENDM
 
 ; Input: HL (VRAM pointer), DE (Level pointer)
-ScrollUpdateBottom::
+ScrollUpdateBottom:
 	ld b, 6 ; 6 units of 2 blocks each
 	push hl
 	push de
 .loop:
 	push bc
 
-	; Preload block IDs into B and C, multiplied by 4 to index into the block data table
+	; Preload block IDs into B and C, multiplied by 4 (if 64 blocks mode) to index into the block data table
 	call ScrollUpdateTopBottomRead
-	set 1, b ; Start at the bottom row
-	set 1, c ; Start at the bottom row
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		set 1, b ; Start at the bottom row
+		set 1, c ; Start at the bottom row
+	ENDC
 
 	; Write ---------------------------
 	push de
-	ld d, HIGH(BlockAppearance)
+	IF DEF(ONLY_64_BLOCK_TYPES)
+		ld d, HIGH(BlockAppearance)
+	ELSE
+		ld d, HIGH(BlockAppearance + 512)
+	ENDC
 	ld e, b
 	ScrollUpdateBottomWrite
+	IF !DEF(ONLY_64_BLOCK_TYPES)
+		dec d
+	ENDC
 	ld e, c
 	ScrollUpdateBottomWrite
 
@@ -368,16 +435,26 @@ ColorUpdateColumn:
 	push hl
 	; Get first block's color
 	ld a, [de]
-	ld hl, BlockAppearanceColor
-	add_hl_a
+	IF DEF(PAGE_ALIGNED_BLOCK_DATA)
+		ld h, HIGH(BlockAppearanceColor)
+		ld l, a
+	ELSE
+		ld hl, BlockAppearanceColor
+		add_hl_a
+	ENDC
 	ld b, [hl] ; B = block color 1
 
 	call GoDownOneLevelRow
 	
 	; Get second block's color
 	ld a, [de]
-	ld hl, BlockAppearanceColor
-	add_hl_a
+	IF DEF(PAGE_ALIGNED_BLOCK_DATA)
+		ld h, HIGH(BlockAppearanceColor)
+		ld l, a
+	ELSE
+		ld hl, BlockAppearanceColor
+		add_hl_a
+	ENDC
 	ld c, [hl] ; C = block color 2
 
 	call GoDownOneLevelRow
@@ -418,8 +495,13 @@ ColorUpdateColumn:
 MACRO ColorUpdateRowReadOne
 	ld a, [de]
 	inc e
-	ld hl, BlockAppearanceColor
-	add_hl_a
+	IF DEF(PAGE_ALIGNED_BLOCK_DATA)
+		ld h, HIGH(BlockAppearanceColor)
+		ld l, a
+	ELSE
+		ld hl, BlockAppearanceColor
+		add_hl_a
+	ENDC
 ENDM
 
 MACRO ColorUpdateRowRead

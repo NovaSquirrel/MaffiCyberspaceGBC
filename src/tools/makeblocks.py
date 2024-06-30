@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 import sys
 
+# ---------------------------
+# Configuration
+
+PAGE_ALIGN_BLOCK_DATA = False
+FORCE_256_BLOCK_TYPES = False
+SECTION_TYPE = "ROMX,BANK[1]"
+
+# ---------------------------
+
 if len(sys.argv) != 4:
 	sys.exit('makeblocks.py definition.txt data.asm enum.asm')
 
@@ -132,7 +141,7 @@ for line in text:
 		split = arg.split(" ")
 		for tile in split:
 			block["tiles"].append(parseMetatileTile(tile, default_palette, default_base, priority))
-	elif word == "q": # add four tiles at once
+	elif word == "w": # add four tiles at once
 		tile = parseMetatileTile(arg, default_palette, default_base, priority)
 		block["tiles"] = [tile, tile+1, tile+2, tile+3]
 
@@ -144,25 +153,53 @@ saveBlock()
 # Generate the output that's actually usable in the game
 outfile = open(block_data_filename, "w")
 
+block_count = len(all_blocks)
+print("%d block types defined." % block_count)
+if block_count > 256:
+	sys.exit("That's too many! The maximum is 256.")
+only_sixty_four_blocks = block_count <= 64 and not FORCE_256_BLOCK_TYPES
+
 outfile.write('; This is automatically generated. Edit "%s" instead\n' % block_definition_filename)
-outfile.write('include "res/blockenum.inc"\n\n')
-outfile.write('\nSECTION "BlockAppearance", ROM0, ALIGN[8]\n\n')
+outfile.write('include "res/blockenum.inc"\n')
+if only_sixty_four_blocks:
+	outfile.write('\nSECTION "BlockAppearance", %s, ALIGN[8]\n\n' % SECTION_TYPE)
 
-# Block appearance information
-outfile.write('BlockAppearance::\n')
-for b in all_blocks:
-	outfile.write('\tdb $%.2x, $%.2x, $%.2x, $%.2x ; %s\n' % (b['tiles'][0] & 255, b['tiles'][1] & 255, b['tiles'][2] & 255, b['tiles'][3] & 255, b['name']))
+	# Block appearance information (four bytes per block, array of structs)
+	outfile.write('BlockAppearance::\n')
+	for b in all_blocks:
+		outfile.write('\tdb $%.2x, $%.2x, $%.2x, $%.2x ; %s\n' % (b['tiles'][0] & 255, b['tiles'][1] & 255, b['tiles'][2] & 255, b['tiles'][3] & 255, b['name']))
+else:
+	outfile.write('\nSECTION "BlockAppearance", %s, ALIGN[10]\n\n' % SECTION_TYPE)
 
-outfile.write('\nSECTION "BlockData", ROM0\n\n')
+	# Block appearance information (four bytes per block, struct of arrays)
+	outfile.write('BlockAppearance::\n')
+	for corner in range(4):
+		outfile.write('\t; %s\n' % ('Top left', 'Top right', 'Bottom left', 'Bottom right')[corner])
+		for i in range(256):
+			if i >= block_count:
+				outfile.write('\tdb 0\n')
+			else:
+				outfile.write('\tdb $%.2x ; %s\n' % (all_blocks[i]['tiles'][corner] & 255, all_blocks[i]['name']))
+
+if PAGE_ALIGN_BLOCK_DATA:
+	outfile.write('\nSECTION "BlockAppearanceColor", %s, ALIGN[8]\n' % SECTION_TYPE)
+else:
+	outfile.write('\nSECTION "BlockData", %s\n\n' % SECTION_TYPE)
 
 outfile.write('BlockAppearanceColor::\n')
 for b in all_blocks:
 	outfile.write('\tdb $%.2x ; %s\n' % (b['tiles'][0] >> 8, b['name']))
 
+if PAGE_ALIGN_BLOCK_DATA:
+	outfile.write('SECTION "BlockFlags", %s, ALIGN[8]\n' % SECTION_TYPE)
+
 outfile.write('BlockFlags::\n')
 for b in all_blocks:
 	outfile.write('\tdb $%x|BlockClass_%s ; %s\n' % \
 	  (b['solid'] * 0x80, b['class'], b['name']))
+
+if PAGE_ALIGN_BLOCK_DATA:
+	outfile.write('SECTION "BlockInteractions", %s\n' % SECTION_TYPE)
 
 # Write all interaction type tables corresponding to each interaction set
 for interaction, routines in all_interactions.items():
@@ -177,6 +214,12 @@ outfile.close()
 # Generate the enum in a separate file
 outfile = open(block_enum_filename, "w")
 outfile.write('; This is automatically generated. Edit "%s" instead\n' % block_definition_filename)
+
+if only_sixty_four_blocks:
+	outfile.write('DEF ONLY_64_BLOCK_TYPES = 1\n')
+if PAGE_ALIGN_BLOCK_DATA:
+	outfile.write('DEF PAGE_ALIGNED_BLOCK_DATA = 1\n')
+outfile.write('\n')
 
 for i, b in enumerate(all_blocks):
 	outfile.write('DEF BlockType_%s EQU %d\n' % (b['name'], i))

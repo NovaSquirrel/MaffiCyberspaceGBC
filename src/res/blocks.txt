@@ -22,13 +22,13 @@ t 0,0 0,0
 palette terrain_palette
 
 +Floor
-q 0,2
+w 0,2
 
 palette wall_palette
 
 +Wall
 solid
-q 4,0
+w 4,0
 
 +Wall____U
 solid
@@ -112,27 +112,27 @@ t 9,0 8,0
 +Bricks
 palette blue_palette
 solid
-q 0,3
+w 0,3
 
 +BricksCracked
 palette blue_palette
 solid
-q 4,3
+w 4,3
 
 +PrizeAnimation1
 palette purple_palette
 solid
-q 4,1
+w 4,1
 
 +PrizeAnimation2
 palette wall_palette
 solid
-q 8,1
+w 8,1
 
 +UsedPrize
 palette wall_palette
 solid
-q 12,1
+w 12,1
 
 #######################################
 # Special floors
@@ -144,54 +144,54 @@ marker SpecialFloor
 +Star
 palette terrain_palette
 When Above, RunBlockStar
-q 4,2
+w 4,2
 
 +Heart
 palette terrain_palette
 When Above, RunBlockHeart
-q 8,2
+w 8,2
 
 +Dot
 palette terrain_palette
 When Above, RunBlockDot
-q 12,2
+w 12,2
 
 +Key
 palette purple_palette
 When Above, RunBlockKey
-q 8,4
+w 8,4
 
 marker EndCollectible
 
 +Teleporter
 palette blue_palette
 When Above, RunBlockTeleporter
-q 8,3
+w 8,3
 
 +Exit
 palette blue_palette
 When Above, RunBlockExit
-q 12,3
+w 12,3
 
 +Spring
 palette blue_palette
 When Above, RunBlockSpring
-q 0,4
+w 0,4
 
 +ToggleButton
 palette purple_palette
 When Above, RunBlockToggleButton
-q 4,5
+w 4,5
 
 +Fire
 palette orange_palette
 When Above, RunBlockFire
-q 4,4
+w 4,4
 
 +Bomb
 palette orange_palette
 When Above, RunBlockBomb
-q 0,5
+w 0,5
 
 marker EndSpecialFloor
 
@@ -205,12 +205,12 @@ marker SpecialWall
 solid
 When Side, RunBlockLock
 palette purple_palette
-q 12,4
+w 12,4
 
 +Prize
 palette purple_palette
 When Side, RunBlockPrize
 solid
-q 0,1
+w 0,1
 
 marker EndSpecialWall

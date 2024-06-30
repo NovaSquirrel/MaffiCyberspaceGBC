@@ -122,6 +122,9 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	dec b
 	jr nz, :-
 
+	ld a, BANK(UpdateRow)
+	ld [rROMB0], a
+
 	; Ideally the row/column updates happen in vblank, but may spill over
 	ld a, [DoUpdateRow]
 	rlca
