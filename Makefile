@@ -120,6 +120,10 @@ res/tilesets/%.2bpp: res/tilesets/%.png
 	@$(MKDIR_P) $(@D)
 	py -3 src/tools/pilbmp2nes.py --planes=0,1 $< $@
 
+res/tilesets_8x16/%.2bpp: res/tilesets_8x16/%.png
+	@$(MKDIR_P) $(@D)
+	py -3 src/tools/pilbmp2nes.py --tile-height 16 --planes=0,1 $< $@
+
 res/blockdata.asm res/blockenum.inc: src/tools/makeblocks.py res/blocks.txt
 	@$(MKDIR_P) $(@D)
 	$^ res/blockdata.asm res/blockenum.inc

@@ -83,8 +83,6 @@ RunPlayer::
 	def PlayerTile2 equs "temp2"
 	def PlayerTile3 equs "temp3"
 	def PlayerTile4 equs "temp4"
-	def PlayerTile5 equs "temp5"
-	def PlayerTile6 equs "temp6"
 
 	; Get X position first
 	ldh a, [CameraX+0]
@@ -132,8 +130,9 @@ RunPlayer::
 	; Set up PlayerTile1 through PlayerTile6 with 0-5
 	xor a
 	ld hl, PlayerTile1
-	ld b, 6
+	ld b, 4
 :	ld [hl+], a
+	inc a
 	inc a
 	dec b
 	jr nz, :-
@@ -162,7 +161,6 @@ RunPlayer::
 	jr nz, :+
 		hswap [PlayerTile1], [PlayerTile2]
 		hswap [PlayerTile3], [PlayerTile4]
-		hswap [PlayerTile5], [PlayerTile6]
 		ld b, OAMF_XFLIP|PALETTE_PLAYER
 	:
 
@@ -173,8 +171,8 @@ RunPlayer::
 	; HL = OAM write pointer
 
 	; Push all of the tiles first
-	ld hl, PlayerTile6
-	ld c, 6
+	ld hl, PlayerTile4
+	ld c, 4
 :  	ld a, [hl-]
 	push af
 	dec c
@@ -205,7 +203,7 @@ RunPlayer::
 		:
 		ld [hl+], a ; X position
 
-		ld a, 6 ; Tile
+		ld a, 8 ; Tile
 		jr FaceSpriteFinish
 	FaceSpriteDown:
 		ld a, e
@@ -215,7 +213,7 @@ RunPlayer::
 		add 2
 		ld [hl+], a ; X position
 
-		ld a, 7 ; Tile
+		ld a, 10 ; Tile
 	FaceSpriteFinish:
 		ld [hl+], a ; tile number
 		ld a, b
@@ -226,7 +224,7 @@ RunPlayer::
 	; Now add the rest of the player
 
 	; Loop to create the OAM entries
-	ld c, 3     ; 3 rows
+	ld c, 2     ; 3 rows
 :	ld a, e
 	ld [hl+], a ; Y position
 	ld a, d
@@ -246,8 +244,8 @@ RunPlayer::
 	ld a, b
 	ld [hl+],a ; set attribute
 
-	ld a, e    ; go down 8 pixels
-	add 8
+	ld a, e    ; go down 16 pixels
+	add 16
 	ld e, a
 
 	dec c
@@ -292,6 +290,6 @@ SharedCameraSubtractCode:
 
 SECTION "PlayerGraphics", ROMX, ALIGN[4]
 PlayerAnimationFrameGraphics::
-	incbin "res/tilesets/MaffiWalkR.2bpp"
-	incbin "res/tilesets/MaffiWalkD.2bpp"
-	incbin "res/tilesets/MaffiWalkU.2bpp"
+	incbin "res/tilesets_8x16/MaffiWalkR.2bpp"
+	incbin "res/tilesets_8x16/MaffiWalkD.2bpp"
+	incbin "res/tilesets_8x16/MaffiWalkU.2bpp"

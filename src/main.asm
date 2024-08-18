@@ -61,17 +61,16 @@ forever:
 
 	; Calculate a pointer to the frame graphics
 	ld a, [PlayerAnimationFrame]
-	ld b, a
 	add a, a ; * 2
-	add a, b ; * 3
-	add a, a ; * 6
+	add a, a ; * 4
+	add a, a ; * 8
 	ld h, 0
 	ld l, a
 	add hl, hl
 	add hl, hl
 	add hl, hl
 	add hl, hl
-	ld de, PlayerAnimationFrameGraphics
+	ld de, PlayerAnimationFrameGraphics+16
 	add hl, de
 	push hl
 
@@ -88,11 +87,11 @@ forever:
 	ldh [rHDMA1], a
 	ld a, l
 	ldh [rHDMA2], a
-	ld a, HIGH($8000)
+	ld a, HIGH($8010)
 	ldh [rHDMA3], a
-	ld a, LOW($8000)
+	ld a, LOW($8010)
 	ldh [rHDMA4], a
-	ld a, 6-1
+	ld a, 7-1
 	ldh [rHDMA5], a
 	
 AfterVblankForDMG: ; The DMG-specific code will jump here once it's done

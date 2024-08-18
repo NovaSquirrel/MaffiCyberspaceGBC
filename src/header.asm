@@ -95,14 +95,6 @@ EntryPoint:
 		ldh [rVBK], a  ; VRAM bank
 		inc a
 		ldh [rSVBK], a ; WRAM bank
-
-		xor a
-		ldh [rIE], a
-		ld a, $30
-		ldh [rP1], a
-		ld a, 1
-		ldh [rSPD], a
-		stop
 .NotGameBoyColor:
 
 	; Clear RAM (but not the return address)
@@ -120,6 +112,23 @@ EntryPoint:
 
 	; Copy in the tileset, which the screen should be off for
 	call ScreenOff
+
+	ldh [IsNotGameBoyColor], a
+	or a
+	jr nz, :+
+		; Make sure audio is off, because speed switching should be done with audio and rendering both disabled, to avoid "odd mode"
+		xor a
+		ldh [rAUDENA], a
+
+		; Switch to double speed mode; see https://gbdev.io/pandocs/CGB_Registers.html#ff4d--key1-cgb-mode-only-prepare-speed-switch
+		xor a
+		ldh [rIE], a
+		ld a, $30
+		ldh [rP1], a
+		ld a, 1
+		ldh [rSPD], a
+		stop
+	:
 
 	ld de, SpriteTileset
 	ld hl, _VRAM8000
@@ -176,4 +185,4 @@ SECTION "Tileset", ROM0
 PlayfieldTileset:
 	incbin "res/tilesets/playfield_tiles.pb16"
 SpriteTileset:
-	incbin "res/tilesets/sprite_tiles.pb16"
+	incbin "res/tilesets_8x16/sprite_tiles.pb16"
