@@ -20,7 +20,7 @@ include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
 include "res/blockenum.inc"
 
-SECTION "Player", ROM0
+SECTION "Player", ROMX
 
 RunPlayer::
 	; .----------------------------------------------------
@@ -75,7 +75,10 @@ RunPlayer::
 		jr nc, :+
 			inc [hl]
 	:
+	ret
 
+; ---------------------------------------------------------
+DrawPlayer::
 	; .----------------------------------------------------
 	; | Draw the player
 	; '----------------------------------------------------
@@ -185,6 +188,9 @@ RunPlayer::
 ; --------------------------------
 	; Add extra sprite first
 
+	ldh a, [IsNotGameBoyColor]
+	or a
+	jp nz, NoFaceSprite
 	ld a, [PlayerDrawDirection]
 	cp DIRECTION_UP
 	jr z, NoFaceSprite
@@ -264,10 +270,14 @@ WalkCycle:
 HorizontalOffsetForPose:
 	db -2, 2, 2, -2
 
+; Input: B (camera position high byte), A (entity position high byte),
+;        C (entity position low byte; should already have subtracted camera position low byte)
+; Output: A (pixel position)
 SharedCameraSubtractCode:
 	sbc b
 	ld b, a
 
+	; BC = entity position - camera
 	ld a, c
 	rept 4
 		sra b
@@ -277,6 +287,7 @@ SharedCameraSubtractCode:
 	; A = low half of BC>>4
 	ret
 
+; Player frames
 	enum_start
 	enum_elem PLAYER_FRAME_R
 	enum_elem PLAYER_FRAME_R2

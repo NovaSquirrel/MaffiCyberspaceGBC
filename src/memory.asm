@@ -35,27 +35,37 @@ DoUpdateRow::    ds 1
 DoUpdateColumn:: ds 1
 ParallaxSource:: ds 2
 
+EnemyCount:: ds 1
+
 SECTION "ParallaxRAM", WRAM0, ALIGN[4]
 ParallaxShifts::
 	ds 256    ; 16 * 8 (with each tile repeated twice)
 
-SECTION "Queue", WRAM0, ALIGN[8]
-	UNION     ; Flood fill mode
-FloodQueueHi::
+SECTION "Stack", WRAM0
+Stack::
 	ds 256
 
-	NEXTU     ; Gameplay mode
-
+SECTION "Queue", WRAM0, ALIGN[9]
+	UNION
+; Flood fill mode
+FloodQueueHi::
+	ds 256
+	NEXTU
+; Gameplay mode (used for actors)
+ActorData::
+	ds 256 ; 16 entries of 16 bytes each
 	ENDU
 
 ; -------------------------------------
 
-	UNION     ; Flood fill mode
+	UNION
+; Flood fill mode
 FloodQueueLo::
 	ds 256
-
-	NEXTU     ; Gameplay mode
-
+	NEXTU
+; Gameplay mode
+ActorExtra::
+	ds 256 ; 16 entries of 16 bytes each - "set 0,h" to get the other variables
 	ENDU
 
 SECTION "OAM Data", WRAM0, ALIGN[8]

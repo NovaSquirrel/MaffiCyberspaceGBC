@@ -16,6 +16,7 @@
 ;
 
 include "include/macros.inc"
+include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
 
 SECTION "MainLoop", ROM0
@@ -26,6 +27,26 @@ SECTION "MainLoop", ROM0
 
 StartLevel::
 	call GenerateMaze
+
+	; Initialize actor data
+	ld hl, ActorData
+	ld bc, 512
+	call memclear
+
+	; Test enemy
+	ld a, 1
+	ld [ActorData], a
+	ld a, 10
+	ld [ActorData + actor_pyh], a
+	ld [ActorData + actor_pxh], a
+	ld a, $80
+	ld [ActorData + actor_pyl], a
+	ld [ActorData + actor_pxl], a
+
+	ld a, 7
+	ldh [rWX], a ; X position + 7, so 7 is writing 0
+	ld a, 144-8
+	ldh [rWY], a
 
 	call ClearAndWriteOAM
 	call ScreenOn
@@ -155,9 +176,19 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	xor a
 	ldh [OamWrite], a
 
+	ld a, BANK(RunPlayer)
+	ld [rROMB0], a
 	call RunPlayer
 
 	call AdjustCamera
+
+	ld a, BANK(RunActors)
+	ld [rROMB0], a
+	call RunActors
+
+	ld a, BANK(DrawPlayer)
+	ld [rROMB0], a
+	call DrawPlayer
 
 	jp forever
 
