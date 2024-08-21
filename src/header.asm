@@ -53,7 +53,10 @@ SECTION "rst38", ROM0[$0038]
 SECTION "vblank", ROM0[$0040]
 	jp vblank
 SECTION "stat", ROM0[$0048]
-	reti
+	push af
+	ldh a, [LYC_Interrupt_LCDC]
+	ldh [rLCDC],a
+	jp stat_continued
 SECTION "timer", ROM0[$0050]
 	jp timer
 SECTION "serial", ROM0[$0058]
@@ -113,7 +116,7 @@ EntryPoint:
 	; Copy in the tileset, which the screen should be off for
 	call ScreenOff
 
-	ldh [IsNotGameBoyColor], a
+	ldh a, [IsNotGameBoyColor]
 	or a
 	jr nz, :+
 		; Make sure audio is off, because speed switching should be done with audio and rendering both disabled, to avoid "odd mode"
@@ -130,15 +133,28 @@ EntryPoint:
 		stop
 	:
 
+	ld a, BANK(PlayfieldTileset)
+	ld [rROMB0], a
+
 	ld de, SpriteTileset
 	ld hl, _VRAM8000
-	ld b, 10*16
+	ld b, 6*16
 	call pb16_unpack_block
 
 	ld de, PlayfieldTileset
 	ld hl, _VRAM9000
 	ld b, 6*16
 	call pb16_unpack_block
+
+	ld de, StatusTileset
+	ld hl, _VRAM8000 + $F00
+	ld b, 1*16
+	call pb16_unpack_block
+
+;	ld de, SpWalkerTileset
+;	ld hl, _VRAM8000 + $500
+;	ld b, 16
+;	call pb16_unpack_block
 
 	ldh a, [IsNotGameBoyColor]
 	or a
@@ -169,6 +185,17 @@ EntryPoint:
 
 	jp StartLevel
 
+SECTION "stat2", ROM0
+stat_continued:
+	; Wait for the start of hblank
+	; LYC interrupts happen at the very start of a line, which is mode 2, so there is potential for a race condition where the main code detects the very end of hblank just before it becomes mode 2, and then the interrupt happens, and now it's busy drawing so the writes will fail.
+	; See https://gbdev.io/guides/lyc_timing.html#the-vram-access-race-condition
+:	ldh a, [rSTAT]
+	and STATF_LCD
+	jr nz, :-
+	pop af
+	reti
+
 SECTION "OamCode", ROM0
 
 oam_dma_routine:
@@ -180,9 +207,20 @@ oam_dma_routine:
 	ret
 oam_dma_routine_end:
 
-SECTION "Tileset", ROM0
+SECTION "Tileset", ROMX
 
 PlayfieldTileset:
 	incbin "res/tilesets/playfield_tiles.pb16"
 SpriteTileset:
 	incbin "res/tilesets_8x16/sprite_tiles.pb16"
+StatusTileset:
+	incbin "res/tilesets/status_tiles.pb16"
+SpWalkerTileset:
+	incbin "res/tilesets_8x16/sp_walker.pb16"
+	incbin "res/tilesets_8x16/sp_ball.pb16"
+	incbin "res/tilesets_8x16/sp_bonzi.pb16"
+	incbin "res/tilesets_8x16/sp_clippy.pb16"
+	incbin "res/tilesets_8x16/sp_george.pb16"
+	incbin "res/tilesets_8x16/sp_rover.pb16"
+
+

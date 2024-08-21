@@ -20,65 +20,127 @@ include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
 include "res/blockenum.inc"
 
-SECTION "Player", ROMX
+SECTION "Player", ROMX,BANK[2]
 
 RunPlayer::
 	; .----------------------------------------------------
 	; | Move the player
 	; '----------------------------------------------------
 
-	ld hl, PlayerPYH
 	ldh a, [KeyDown]
 	and PADF_UP
-	jr z, :+
+	jr z, .NoUp
 		ld a, DIRECTION_UP
 		ld [PlayerDrawDirection], a
+
+		ldh a, [PlayerPYL]
+		sub 16
+		ldh a, [PlayerPYH]
+		sbc 0
+		ld h, a
+		ldh a, [PlayerPXH]
+		ld l, a
+		call MapFlagsLH_XY
+		rla
+		jr c, .NoUp
+
 		ldh a, [PlayerPYL]
 		sub 16
 		ldh [PlayerPYL], a
 		jr nc, :+
+			ld hl, PlayerPYH
 			dec [hl]
-	:
+		:
+	.NoUp:
 
 	ldh a, [KeyDown]
 	and PADF_DOWN
-	jr z, :+
+	jr z, .NoDown
 		ld a, DIRECTION_DOWN
 		ld [PlayerDrawDirection], a
+
+		ldh a, [PlayerPYL]
+		add 16
+		ldh a, [PlayerPYH]
+		adc 0
+		ld h, a
+		ldh a, [PlayerPXH]
+		ld l, a
+		call MapFlagsLH_XY
+		rla
+		jr c, .NoDown
+
 		ldh a, [PlayerPYL]
 		add 16
 		ldh [PlayerPYL], a
 		jr nc, :+
+			ld hl, PlayerPYH
 			inc [hl]
-	:
+		:
+	.NoDown:
 
-	ld hl, PlayerPXH
 	ldh a, [KeyDown]
 	and PADF_LEFT
-	jr z, :+
+	jr z, .NoLeft
 		ld a, DIRECTION_LEFT
 		ld [PlayerDrawDirection], a
+
+		ldh a, [PlayerPXL]
+		sub 16
+		ldh a, [PlayerPXH]
+		sbc 0
+		ld l, a
+		ldh a, [PlayerPYH]
+		ld h, a
+		call MapFlagsLH_XY
+		rla
+		jr c, .NoLeft
+
 		ldh a, [PlayerPXL]
 		sub 16
 		ldh [PlayerPXL], a
 		jr nc, :+
+			ld hl, PlayerPXH
 			dec [hl]
-	:
+		:
+	.NoLeft:
+
 	ldh a, [KeyDown]
 	and PADF_RIGHT
-	jr z, :+
+	jr z, .NoRight
 		ld a, DIRECTION_RIGHT
 		ld [PlayerDrawDirection], a
+
+		ldh a, [PlayerPXL]
+		add 16
+		ldh a, [PlayerPXH]
+		adc 0
+		ld l, a
+		ldh a, [PlayerPYH]
+		ld h, a
+		call MapFlagsLH_XY
+		rla
+		jr c, .NoRight
+
 		ldh a, [PlayerPXL]
 		add 16
 		ldh [PlayerPXL], a
 		jr nc, :+
+			ld hl, PlayerPXH
 			inc [hl]
-	:
+		:
+	.NoRight:
 	ret
 
 ; ---------------------------------------------------------
 DrawPlayer::
+	ldh a, [IsNotGameBoyColor] ; On GBC, draw direction takes effect immediately
+	or a
+	jr nz, :+
+		ld a, [PlayerDrawDirection]
+		ld [DMG_PlayerDrawDirection], a
+	:
+
 	; .----------------------------------------------------
 	; | Draw the player
 	; '----------------------------------------------------
@@ -101,10 +163,10 @@ DrawPlayer::
 	add 8-8
 	ld d, a
 
-	; Adjust for the pose
+	; Adjust the horizontal offset for the pose, to keep the player centered and allow the tail to extend to the side differently
 	ld hl, HorizontalOffsetForPose
-	ld a, [PlayerDrawDirection]
-	add_hl_a
+	ld a, [DMG_PlayerDrawDirection]
+	rst_add_hl_a
 	ld a, d
 	add [hl]
 	ld d, a
@@ -120,18 +182,21 @@ DrawPlayer::
 	ld c, a
 	ldh a, [PlayerPYH]
 	call SharedCameraSubtractCode
-	add 16-24
+	add 16-24-7
 	ld e, a
 
-	; Get the six tiles for the direction
+	; Get the animation frame for the direction, which will become a source pointer for the DMA or the slower copy
 	ld a, [PlayerDrawDirection]
 	ld hl, PlayerFrameForPose
 	rst_add_hl_a
 	ld a, [hl]
 	ld [PlayerAnimationFrame], a
 
-	; Set up PlayerTile1 through PlayerTile6 with 0-5
-	xor a
+	; Set up PlayerTile1 through PlayerTile4 with 0-3
+	ld a, [DMG_PlayerAnimationFrame_Page] ; <-- while keeping in mind the double buffering on DMG
+	add a
+	add a
+	add a
 	ld hl, PlayerTile1
 	ld b, 4
 :	ld [hl+], a
@@ -159,7 +224,7 @@ DrawPlayer::
 
 	; Flip if left
 	ld b, PALETTE_PLAYER
-	ld a, [PlayerDrawDirection]
+	ld a, [DMG_PlayerDrawDirection]
 	cp DIRECTION_LEFT
 	jr nz, :+
 		hswap [PlayerTile1], [PlayerTile2]
@@ -182,7 +247,7 @@ DrawPlayer::
 	jr nz, :-
 
 	ld h, HIGH(OamBuffer)
-	ldh a, [OamWrite]
+	ldh a, [OAMWrite]
 	ld l, a
 
 ; --------------------------------
@@ -260,7 +325,7 @@ DrawPlayer::
 ; --------------------------------
 
 	ld a, l
-	ldh [OamWrite], a
+	ldh [OAMWrite], a
 	ret
 
 PlayerFrameForPose:

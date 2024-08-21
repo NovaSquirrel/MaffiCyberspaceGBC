@@ -425,24 +425,6 @@ FloodFillPlayfield:
 
 	ret
 
-
-; Sets HL to a pointer at a point on the map where D=X and E=Y
-MapPointerDE_XY::
-           ;     E           A
-	xor a  ; ..yy yyyy | .... ....
-	srl e
-	rra    ; ...y yyyy | y... ....
-	srl e
-	rra    ; .... yyyy | yy.. ....
-	or d
-	ld l, a
-
-	ld a, e
-	or high(Playfield)
-	ld h, a
-	ret
-
-
 ; Inputs: A(Type), B(Width), C(Height), D(X), E(Y)
 RectFill:
 	ldh [RectFillValue], a
@@ -467,54 +449,4 @@ RectFill:
 	:
 	dec c
 	jr nz, .another_row
-	ret
-
-
-; Adapted from http://wiki.nesdev.com/w/index.php/Random_number_generator/Linear_feedback_shift_register_(advanced)
-RandomByte:
-	push bc
-	; rotate the middle bytes left
-	ldh a, [seed+0]
-	ld c, a
-
-	ldh a, [seed+1]
-	ldh [seed+2], a
-	; compute seed+1 ($C5>>1 = %1100010)
-	ldh a, [seed+3] ; original high byte
-	srl a
-	ld b, a ; reverse: 100011
-	srl a
-	srl a
-	srl a
-	srl a
-	xor b
-	srl a
-	xor b
-	xor c ; combine with original low byte
-	ldh [seed+1], a
-	; compute seed+0 ($C5 = %11000101)
-
-	ldh a, [seed+2] ; will move to seed+3 at the end
-	ld c, a         ; save it for then
-
-	ldh a, [seed+3] ; original high byte
-	ld b, a
-	add a
-	xor b
-	add a
-	add a
-	add a
-	add a
-	xor b
-	add a
-	add a
-	xor b
-	ldh [seed+0], a
-
-	; finish rotating byte 2 into 3
-	ld a, c
-	ldh [seed+3], a
-	pop bc
-
-	ldh a, [seed+0]
 	ret

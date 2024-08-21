@@ -3,7 +3,6 @@ DEF DIRECTION_DOWN  EQU 1
 DEF DIRECTION_LEFT  EQU 2
 DEF DIRECTION_UP    EQU 3
 
-
 DEF PALETTE_FACE    EQU 6
 DEF PALETTE_PLAYER  EQU 7
 
@@ -75,3 +74,15 @@ DEF ACTOR_STATE_KNOCKBACK = 1
 
 ; Other actor stuff
 DEF ACTOR_SIZE  = 16
+DEF ACTOR_COUNT = 16
+DEF PLAYER_PROJECTILE_COUNT = 7
+
+; .----------------------------------------------------------------------------
+; | Game-specific macros
+; '----------------------------------------------------------------------------
+
+MACRO get_block_flags
+	ld h, HIGH(BlockFlags)
+	ld l, a
+	ld a, [hl]
+ENDM

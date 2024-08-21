@@ -20,7 +20,7 @@
 
 include "include/macros.inc"
 include "include/hardware.inc/hardware.inc"
-include "res/blockenum.inc" ; for ONLY_64_BLOCK_TYPES and PAGE_ALIGNED_BLOCK_DATA
+include "res/blockenum.inc" ; for ONLY_64_BLOCK_TYPES and PAGE_ALIGNED_BLOCK_COLOR
 
 SECTION "DrawPlayfield", ROMX,BANK[1]
 
@@ -435,7 +435,7 @@ ColorUpdateColumn:
 	push hl
 	; Get first block's color
 	ld a, [de]
-	IF DEF(PAGE_ALIGNED_BLOCK_DATA)
+	IF DEF(PAGE_ALIGNED_BLOCK_COLOR)
 		ld h, HIGH(BlockAppearanceColor)
 		ld l, a
 	ELSE
@@ -448,7 +448,7 @@ ColorUpdateColumn:
 	
 	; Get second block's color
 	ld a, [de]
-	IF DEF(PAGE_ALIGNED_BLOCK_DATA)
+	IF DEF(PAGE_ALIGNED_BLOCK_COLOR)
 		ld h, HIGH(BlockAppearanceColor)
 		ld l, a
 	ELSE
@@ -495,7 +495,7 @@ ColorUpdateColumn:
 MACRO ColorUpdateRowReadOne
 	ld a, [de]
 	inc e
-	IF DEF(PAGE_ALIGNED_BLOCK_DATA)
+	IF DEF(PAGE_ALIGNED_BLOCK_COLOR)
 		ld h, HIGH(BlockAppearanceColor)
 		ld l, a
 	ELSE

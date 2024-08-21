@@ -36,7 +36,7 @@ StartLevel::
 	; Test enemy
 	ld a, 1
 	ld [ActorData], a
-	ld a, 10
+	ld a, 36
 	ld [ActorData + actor_pyh], a
 	ld [ActorData + actor_pxh], a
 	ld a, $80
@@ -47,9 +47,28 @@ StartLevel::
 	ldh [rWX], a ; X position + 7, so 7 is writing 0
 	ld a, 144-8
 	ldh [rWY], a
+	; Do an interrupt at the bottom of the screen
+	ldh [rLYC], a
+	ld a, STATF_LYC
+	ldh [rSTAT], a
+	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJOFF|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00|LCDCF_WINON
+	ldh [LYC_Interrupt_LCDC], a
 
-	call ClearAndWriteOAM
-	call ScreenOn
+	; Clear all of OAM
+	ld hl, OamBuffer
+	ld c, 0
+	call memclear8
+	ld a, OamBuffer>>8
+	call RunOamDMA
+
+	; On Game Boy Color, get rid of the face overlay tiles to make room for the player
+	ldh a, [IsNotGameBoyColor]
+	or a
+	jr z, :+
+		ld hl, _VRAM8000
+		ld c, 0
+		call memclear8
+	:
 
 Gameplay::
 ; -------------------------------------------------------------------------
@@ -62,14 +81,49 @@ Gameplay::
 	ld [DoUpdateColumn], a
 	xor a
 	ld [PlayerAnimationFrame], a
+	ldh [OAMWrite], a
+	dec a
+	ld [PlayerAnimationFrameInVRAM], a ; Initialize it with -1 so it'll get sent no matter what
 
 	ld a, LOW(ParallaxShifts)
 	ld [ParallaxSource+0], a
 	ld a, HIGH(ParallaxShifts)
 	ld [ParallaxSource+1], a
 
+	; Status bar
+	ld hl, _SCRN1
+	ld a, $f0
+	ld c, 20
+	call memset8
+	ld hl, _SCRN1+1
+	ld a, $f5
+	ld c, 8
+	call memset8
+	inc l
+	ld a, $f6
+	ld c, 4
+	call memset8
+	inc l
+	ld a, $f8
+	ld [hl+], a
+	ld a, $f9
+	ld [hl+], a
+	ld a, $fa
+	ld [hl+], a
+	ld a, $fb
+	ld [hl+], a
+;	ld a, 1
+;	ldh [rVBK], a
+;	ld hl, _SCRN1
+;	ld a, 7
+;	ld c, 20
+;	call memset8
+;	xor a
+;	ldh [rVBK], a
+
 	call InitCamera
 	call RenderLevelScreen
+	call ScreenOn
 forever:
 	; .----------------------
 	; | Pre-vblank tasks
@@ -78,10 +132,18 @@ forever:
 	; On DMG, skip over the DMA code
 	ldh a, [IsNotGameBoyColor]
 	or a
-	jp nz, VblankForDMG
+	jp nz, PreVblankForDMG
 
 	; Calculate a pointer to the frame graphics
+	ld a, [PlayerAnimationFrameInVRAM] ; <-- Check if the graphics are already present, which means the copy can be skipped
+	ld b, a
 	ld a, [PlayerAnimationFrame]
+	cp b
+	jr nz, :+
+		call WaitVblank
+		jr AfterVblankForDMG
+	:
+	ld [PlayerAnimationFrameInVRAM], a
 	add a, a ; * 2
 	add a, a ; * 4
 	add a, a ; * 8
@@ -122,6 +184,9 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	ldh [rSCX], a
 	ld a, [CameraYPixel]
 	ldh [rSCY], a
+	; Turn on rendering (reenabling sprites)
+	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJON|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00|LCDCF_WINON
+	ldh [rLCDC],a
 
 	ld a, OamBuffer>>8
 	call RunOamDMA
@@ -134,13 +199,7 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	ld de, $9000
 	ld b, 2
 :	; Semi-unrolled loop
-	rept 8
-	ld a, [hl+]
-	ld [de], a
-	inc e
-	endr
-	dec b
-	jr nz, :-
+	call WriteOneTile
 
 	ld a, BANK(UpdateRow)
 	ld [rROMB0], a
@@ -171,10 +230,9 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	; | Game logic
 	; '----------------------
 	call ReadKeys
-	call ClearOAM
 
 	xor a
-	ldh [OamWrite], a
+	ldh [OAMWrite], a
 
 	ld a, BANK(RunPlayer)
 	ld [rROMB0], a
@@ -182,21 +240,168 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 
 	call AdjustCamera
 
-	ld a, BANK(RunActors)
-	ld [rROMB0], a
-	call RunActors
-
 	ld a, BANK(DrawPlayer)
 	ld [rROMB0], a
 	call DrawPlayer
 
+	ld a, BANK(RunActors)
+	ld [rROMB0], a
+	call RunActors
+
+	call ClearPreviouslyUsedOAM
+	ldh a, [OAMWrite]
+	ld [PreviousOAMWrite], a
+
 	jp forever
 
 ; -----------------------------------------------
-VblankForDMG:
+PreVblankForDMG:
+	; If it's in progress keep going!!
+	ld a, [DMG_PlayerAnimationFrame_InProgress]
+	or a
+	jr nz, .KeepGoing
+
+	; Start a new animation frame copy?
+	ld a, [PlayerAnimationFrameInVRAM] ; <-- Check if the graphics are already present, which means the copy can be skipped
+	ld b, a
+	ld a, [PlayerAnimationFrame]
+	cp b
+	jr nz, :+
+		; Allow flipping from left/right instantly
+		ld a, [PlayerDrawDirection]
+		ld [DMG_BufferedPlayerDrawDirection], a
+
+		call WaitVblank
+		jp AfterVblankForDMG
+	:
+
+	; Starting a new animation frame copy, so set the variables
+	ld [PlayerAnimationFrameInVRAM], a
+	ld a, [PlayerDrawDirection]
+	ld [DMG_BufferedPlayerDrawDirection], a
+
+.KeepGoing:
+	ld a, [DMG_PlayerAnimationFrame_InProgress]
+	inc a
+	ld [DMG_PlayerAnimationFrame_InProgress], a
+	cp 2
+	jr z, .SecondHalf
+.FirstHalf:
+	ld a, $10
+	ld [DMG_PlayerAnimationFrame_Destination1], a
+	ld a, $30
+	ld [DMG_PlayerAnimationFrame_Destination2], a
+	ld a, $40
+	ld [DMG_PlayerAnimationFrame_Destination3], a
+
+	jr .WasFirstHalf
+.SecondHalf:
+	ld a, $50
+	ld [DMG_PlayerAnimationFrame_Destination1], a
+	ld a, $60
+	ld [DMG_PlayerAnimationFrame_Destination2], a
+	ld a, $70
+	ld [DMG_PlayerAnimationFrame_Destination3], a
+.WasFirstHalf:
+
+	; Calculate a pointer to the frame graphics
+	ld a, [PlayerAnimationFrameInVRAM]
+	add a, a ; * 2
+	add a, a ; * 4
+	add a, a ; * 8
+	ld h, 0
+	ld l, a
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	ld de, PlayerAnimationFrameGraphics
+	add hl, de
+	push hl ; Save it two times for the second and third tiles
+	push hl
+
+	; Calculate the source addresses using the destination offsets
+	ld a, [DMG_PlayerAnimationFrame_Destination1]
+	add_hl_a
+	ld a, l
+	ld [DMG_PlayerAnimationFrame_Source1+0], a
+	ld a, h
+	ld [DMG_PlayerAnimationFrame_Source1+1], a
+
+	pop hl
+	ld a, [DMG_PlayerAnimationFrame_Destination2]
+	add_hl_a
+	ld a, l
+	ld [DMG_PlayerAnimationFrame_Source2+0], a
+	ld a, h
+	ld [DMG_PlayerAnimationFrame_Source2+1], a
+
+	pop hl
+	ld a, [DMG_PlayerAnimationFrame_Destination3]
+	add_hl_a
+	ld a, l
+	ld [DMG_PlayerAnimationFrame_Source3+0], a
+	ld a, h
+	ld [DMG_PlayerAnimationFrame_Source3+1], a
+
+
+	ld a, [DMG_PlayerAnimationFrame_Page]
+	or a
+	jr nz, :+
+		ld hl, DMG_PlayerAnimationFrame_Destination1
+		set 7, [hl]
+		ld hl, DMG_PlayerAnimationFrame_Destination2
+		set 7, [hl]
+		ld hl, DMG_PlayerAnimationFrame_Destination3
+		set 7, [hl]
+	:
+
+	; If the second set of tiles is being copied, finish the process
+	ld a, [DMG_PlayerAnimationFrame_InProgress]
+	cp 2
+	jr nz, :+
+		ld a, [DMG_PlayerAnimationFrame_Page]
+		xor 1
+		ld [DMG_PlayerAnimationFrame_Page], a
+
+		xor a
+		ld [DMG_PlayerAnimationFrame_InProgress], a	
+
+		ld a, [DMG_BufferedPlayerDrawDirection]
+		ld [DMG_PlayerDrawDirection], a
+	:
+
 	; .----------------------
 	; | Vblank
 	; '----------------------
+
+	ld a, BANK(PlayerAnimationFrameGraphics)
+	ld [rROMB0], a
+
 	call WaitVblank
 
+	ld hl, DMG_PlayerAnimationFrame_Destination1
+	call GetDestinationAndSourceThenWriteOneTile
+	ld hl, DMG_PlayerAnimationFrame_Destination2
+	call GetDestinationAndSourceThenWriteOneTile
+	ld hl, DMG_PlayerAnimationFrame_Destination3
+	call GetDestinationAndSourceThenWriteOneTile
+
 	jp AfterVblankForDMG
+
+GetDestinationAndSourceThenWriteOneTile:
+	ld d, HIGH(_VRAM8000)
+	ld a, [hl+]
+	ld e, a
+	ld a, [hl+]
+	ld h, [hl]
+	ld l, a
+WriteOneTile:
+	rept 15
+	ld a, [hl+]
+	ld [de], a
+	inc e
+	endr
+	ld a, [hl]
+	ld [de], a
+	ret

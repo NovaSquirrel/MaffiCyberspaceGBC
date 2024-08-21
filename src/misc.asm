@@ -42,7 +42,7 @@ vblank::
 WaitVblank::
   push hl
   push af
-  ld a, %00011
+  ld a, IEF_VBLANK|IEF_STAT
   ldh [rIE],a     ; Enable vblank interrupt
   ei
 
@@ -207,21 +207,161 @@ ClearAttributes::
   vram_bank_0
   ret
 
-; -----------------------------------------
+; -----------------------------------------------
 
-ClearOAM::
-  ld hl, OamBuffer
-  xor a
-  ldh [OamWrite], a
-.clear_sprites:
-  ld [hl+], a
-  inc l
-  inc l
-  inc l
-  jr nz, .clear_sprites
-  ret
+ClearAllOAM::
+	ld hl, OamBuffer
+	xor a
+ClearOAM_Unrolled:
+	rept 39
+	ld [hl+], a
+	inc l
+	inc l
+	inc l
+	endr
+	ld [hl+], a
+	ret
+
+ClearPreviouslyUsedOAM::
+	ld a, [PreviousOAMWrite]
+	ld b, a
+	ldh a, [OAMWrite]
+	cp b
+	ret nc ; If New >= Old, so don't do anything
+
+	; New < Old
+	; Jump to ClearOAM_Unrolled + (40*4 - (Previous - New))
+	; Conveniently every loop iteration is 4 bytes, and every OAM entry is 4 bytes, so I can use the same counts for both
+	cpl
+	inc a
+	add b
+	cpl
+	inc a
+	add 40*4
+	ld hl, ClearOAM_Unrolled
+	add_hl_a
+	push hl
+
+	; Clear out just the part at the end that is now stale data
+	ld h, HIGH(OamBuffer)
+	ldh a, [OAMWrite]
+	ld l, a
+
+	xor a ; Clear with zero
+	ret   ; Do the jump that was calculated earlier
 
 ClearAndWriteOAM::
-  call ClearOAM
+  call ClearAllOAM
   ld a, OamBuffer>>8
   jp RunOamDMA
+
+; -----------------------------------------------
+; Adapted from http://wiki.nesdev.com/w/index.php/Random_number_generator/Linear_feedback_shift_register_(advanced)
+RandomByte::
+	push bc
+	; rotate the middle bytes left
+	ldh a, [seed+0]
+	ld c, a
+
+	ldh a, [seed+1]
+	ldh [seed+2], a
+	; compute seed+1 ($C5>>1 = %1100010)
+	ldh a, [seed+3] ; original high byte
+	srl a
+	ld b, a ; reverse: 100011
+	srl a
+	srl a
+	srl a
+	srl a
+	xor b
+	srl a
+	xor b
+	xor c ; combine with original low byte
+	ldh [seed+1], a
+	; compute seed+0 ($C5 = %11000101)
+
+	ldh a, [seed+2] ; will move to seed+3 at the end
+	ld c, a         ; save it for then
+
+	ldh a, [seed+3] ; original high byte
+	ld b, a
+	add a
+	xor b
+	add a
+	add a
+	add a
+	add a
+	xor b
+	add a
+	add a
+	xor b
+	ldh [seed+0], a
+
+	; finish rotating byte 2 into 3
+	ld a, c
+	ldh [seed+3], a
+	pop bc
+
+	ldh a, [seed+0]
+	ret
+
+; -----------------------------------------------
+; Block related ROM0 routines
+
+; Sets HL to a pointer at a point on the map where D=X and E=Y
+MapPointerDE_XY::
+           ;     E           A
+	xor a  ; ..yy yyyy | .... ....
+	srl e
+	rra    ; ...y yyyy | y... ....
+	srl e
+	rra    ; .... yyyy | yy.. ....
+	or d
+	ld l, a
+
+	ld a, e
+	or high(Playfield)
+	ld h, a
+	ret
+
+; Sets HL to a pointer at a point on the map where B=X and C=Y
+MapPointerBC_XY::
+           ;     C           A
+	xor a  ; ..yy yyyy | .... ....
+	srl c
+	rra    ; ...y yyyy | y... ....
+	srl c
+	rra    ; .... yyyy | yy.. ....
+	or b
+	ld l, a
+
+	ld a, c
+	or high(Playfield)
+	ld h, a
+	ret
+
+; Sets HL to a pointer at a point on the map where L=X and H=Y
+MapPointerLH_XY::
+	; yyyy yyxx xxxx
+           ;     H           A
+	xor a  ; ..yy yyyy | .... ....
+	srl h
+	rra    ; ...y yyyy | y... ....
+	srl h
+	rra    ; .... yyyy | yy.. ....
+	or l
+	ld l, a
+
+	ld a, h
+	or high(Playfield)
+	ld h, a
+	ret
+
+; Get map flags for the block where L=X and H=Y
+MapFlagsLH_XY::
+	call MapPointerLH_XY
+	ld a, [hl]
+	ld h, HIGH(BlockFlags)
+	ld l, a
+	ld a, [hl]
+	ret

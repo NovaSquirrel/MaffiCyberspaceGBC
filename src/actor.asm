@@ -75,7 +75,7 @@ ActorSneaker:
 ; A = First sprite tile to draw
 ; B = Attributes
 ; Draws actor DE
-DrawActorWithoutFlip:
+DrawActorWithoutFlip_16x16:
 	; Shift B to have zeros for the flip bits
 	sla b
 DrawActorFlipped:
@@ -117,7 +117,7 @@ DrawActor_16x16:
 	jr nc, .no_horiz_flip
 	hswap [temp1], [temp2]
 	ld a, b
-	or OAMF_XFLIP
+	xor OAMF_XFLIP
 	ldh [temp3], a
 .no_horiz_flip:
 
@@ -177,7 +177,7 @@ DrawActor_16x16:
 	ld b, a ; B = attribute
 
 	ld h, high(OamBuffer)
-	ldh a, [OamWrite]
+	ldh a, [OAMWrite]
 	ld l, a
 ; --------------------------------
 
@@ -205,7 +205,7 @@ skipdraw:
 	pop de ; restore "this"
 
 	ld a, l
-	ldh [OamWrite], a
+	ldh [OAMWrite], a
 	ret
 
 
