@@ -151,10 +151,14 @@ EntryPoint:
 	ld b, 1*16
 	call pb16_unpack_block
 
-;	ld de, SpWalkerTileset
-;	ld hl, _VRAM8000 + $500
-;	ld b, 16
-;	call pb16_unpack_block
+	ld de, SpWalkerTileset
+	ld hl, _VRAM8000 + $500
+	ld b, 16
+	call pb16_unpack_block
+	ld de, SpBallTileset
+	ld hl, _VRAM8000 + $600
+	ld b, 16
+	call pb16_unpack_block
 
 	ldh a, [IsNotGameBoyColor]
 	or a
@@ -217,10 +221,15 @@ StatusTileset:
 	incbin "res/tilesets/status_tiles.pb16"
 SpWalkerTileset:
 	incbin "res/tilesets_8x16/sp_walker.pb16"
+SpBallTileset:
 	incbin "res/tilesets_8x16/sp_ball.pb16"
+SpBonziTileset:
 	incbin "res/tilesets_8x16/sp_bonzi.pb16"
+SpClippyTileset:
 	incbin "res/tilesets_8x16/sp_clippy.pb16"
+SpGeorgeTileset:
 	incbin "res/tilesets_8x16/sp_george.pb16"
+SpRoverTileset:
 	incbin "res/tilesets_8x16/sp_rover.pb16"
 
 

@@ -138,10 +138,10 @@ MACRO add_bc_a
 ENDM
 
 MACRO ld_hl_memory
-  ld hl, \1
-  ld a, [hli]
-  ld h, [hl]
-  ld l, a
+	ld hl, \1
+	ld a, [hli]
+	ld h, [hl]
+	ld l, a
 ENDM
 
 MACRO ld_hl_indirect

@@ -18,9 +18,9 @@
 include "include/macros.inc"
 include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
-include "res/blockenum.inc"
+include "res/block_enum.inc"
 
-SECTION "Player", ROMX,BANK[2]
+SECTION FRAGMENT "Player", ROMX
 
 RunPlayer::
 	; .----------------------------------------------------

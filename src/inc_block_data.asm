@@ -1,0 +1,1 @@
+include "res/block_data.asm"

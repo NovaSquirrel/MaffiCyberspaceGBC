@@ -20,9 +20,9 @@
 
 include "include/macros.inc"
 include "include/hardware.inc/hardware.inc"
-include "res/blockenum.inc" ; for ONLY_64_BLOCK_TYPES and PAGE_ALIGNED_BLOCK_COLOR
+include "res/block_enum.inc" ; for ONLY_64_BLOCK_TYPES and PAGE_ALIGNED_BLOCK_COLOR
 
-SECTION "DrawPlayfield", ROMX,BANK[1]
+SECTION FRAGMENT "DrawPlayfield", ROMX
 
 ; .-----------------------------------------------------------------------------
 ; | The public interface (UpdateRow, UpdateColumn, RenderLevelScreen)

@@ -1,0 +1,1 @@
+include "res/actor_data.asm"

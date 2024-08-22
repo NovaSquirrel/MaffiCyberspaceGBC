@@ -1,1 +1,0 @@
-include "res/blockdata.asm"

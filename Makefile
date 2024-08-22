@@ -124,9 +124,13 @@ res/tilesets_8x16/%.2bpp: res/tilesets_8x16/%.png
 	@$(MKDIR_P) $(@D)
 	py -3 src/tools/pilbmp2nes.py --tile-height 16 --planes=0,1 $< $@
 
-res/blockdata.asm res/blockenum.inc: src/tools/makeblocks.py res/blocks.txt
+res/block_data.asm res/block_enum.inc: src/tools/makeblocks.py res/blocks.txt
 	@$(MKDIR_P) $(@D)
-	$^ res/blockdata.asm res/blockenum.inc
+	$^ res/block_data.asm res/block_enum.inc
+
+res/actor_data.asm res/actor_enum.inc: src/tools/makeactors.py res/actors.txt
+	@$(MKDIR_P) $(@D)
+	$^ res/actor_data.asm res/actor_enum.inc
 
 # Catch non-existent files
 # KEEP THIS LAST!!

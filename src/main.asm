@@ -19,6 +19,8 @@ include "include/macros.inc"
 include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
 
+include "res/actor_enum.inc"
+
 SECTION "MainLoop", ROM0
 
 ; -----------------------------------------------------------------------------
@@ -34,7 +36,7 @@ StartLevel::
 	call memclear
 
 	; Test enemy
-	ld a, 1
+	ld a, ActorType_Sneaker
 	ld [ActorData], a
 	ld a, 36
 	ld [ActorData + actor_pyh], a
@@ -42,6 +44,14 @@ StartLevel::
 	ld a, $80
 	ld [ActorData + actor_pyl], a
 	ld [ActorData + actor_pxl], a
+	ld [ActorData + actor_pyl + ACTOR_SIZE], a
+	ld [ActorData + actor_pxl + ACTOR_SIZE], a
+
+	ld a, ActorType_Sneaker
+	ld [ActorData + ACTOR_SIZE], a
+	ld a, 28
+	ld [ActorData + actor_pyh + ACTOR_SIZE], a
+	ld [ActorData + actor_pxh + ACTOR_SIZE], a
 
 	ld a, 7
 	ldh [rWX], a ; X position + 7, so 7 is writing 0
@@ -122,7 +132,11 @@ Gameplay::
 ;	ldh [rVBK], a
 
 	call InitCamera
+
+	ld a, BANK(RenderLevelScreen)
+	ld [rROMB0], a
 	call RenderLevelScreen
+
 	call ScreenOn
 forever:
 	; .----------------------

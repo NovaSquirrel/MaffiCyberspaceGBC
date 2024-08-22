@@ -19,10 +19,10 @@ include "include/macros.inc"
 include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
 
-SECTION "ActorCode", ROMX
+SECTION FRAGMENT "ActorCode", ROMX
 
 ; .----------------------------------------------------------------------------
-; | Actor common code
+; | Loop through the actors
 ; '----------------------------------------------------------------------------
 
 ; Run through all of the actors
@@ -59,18 +59,163 @@ RunActors::
 ; | Called with DE = actor pointer
 ; '----------------------------------------------------------------------------
 
-ActorNone:
+ActorNothing::
 	ret
 
-ActorSneaker:
-	ld a, $34
+ActorSneaker::
+	call EnemyCommon
+
+	ldh a, [PlayerPYH]
+	ld hl, actor_pyh
+	add hl, de
+	cp [hl]
+	jr z, .EqualY
+	jr nc, .GoDown
+	jr .GoUp
+	.EqualY:
+		ldh a, [PlayerPYL]
+		dec l
+		cp [hl]
+		jr z, .DoneMoveY
+		jr nc, .GoDown
+	.GoUp:
+		ld a, -$08
+		call ActorWalkYAndBump
+		jr .DoneMoveY
+	.GoDown:
+		ld a, $08
+		call ActorWalkYAndBump
+	.DoneMoveY:
+
+	ldh a, [PlayerPXH]
+	ld hl, actor_pxh
+	add hl, de
+	cp [hl]
+	jr z, .EqualX
+	jr nc, .GoRight
+	jr .GoLeft
+	.EqualX:
+		ldh a, [PlayerPXL]
+		dec l
+		cp [hl]
+		jr z, .DoneMoveX
+		jr nc, .GoRight
+	.GoLeft:
+		ld a, -$08
+		call ActorWalkXAndBump
+		jr .DoneMoveX
+	.GoRight:
+		ld a, $08
+		call ActorWalkXAndBump
+	.DoneMoveX:
+
+	;ld a, $34
+	ldh a, [framecount]
+	rrca
+	and %100
+	add a, $50
 	ld b, 0
-	call DrawActor_16x16
+	jp DrawActor_16x16
+
+ActorKitty::
+	call EnemyCommon
+	ldh a, [framecount]
+	rrca
+	and %100
+	add a, $58
+	ld b, 0
+	jp DrawActor_16x16
+
+EnemyCommon:
+	ld hl, EnemyCount
+	inc [hl]
 	ret
 
 ; .----------------------------------------------------------------------------
 ; | Actor shared code
 ; '----------------------------------------------------------------------------
+
+ActorWalkY:
+	ld c, a
+	sex
+	ld b, a
+
+	ld hl, actor_pyl
+.add:
+	add hl, de
+	ld a, [hl]
+	add c
+	ld [hl+], a
+	ld a, [hl]
+	adc b
+	ld [hl], a
+	ret
+
+ActorWalkX:
+	ld c, a
+	sex
+	ld b, a
+
+	ld hl, actor_pxl
+	jr ActorWalkY.add
+
+ActorWalkYAndBump:
+	ld c, a
+	sex
+	ld b, a
+
+	ld hl, actor_pyl
+	add hl, de
+	ld a, [hl+]
+	add c
+	ld a, [hl]
+	adc b
+	ld hl, actor_pxh
+	add hl, de
+	ld l, [hl]
+	ld h, a
+	call MapFlagsLH_XY
+	rla
+	ret c
+
+	ld hl, actor_pyl
+	add hl, de
+	ld a, [hl]
+	add c
+	ld [hl+], a
+	ld a, [hl]
+	adc b
+	ld [hl], a
+	ret
+
+ActorWalkXAndBump:
+	ld c, a
+	sex
+	ld b, a
+
+	ld hl, actor_pxl
+	add hl, de
+	ld a, [hl+]
+	add c
+	ld a, [hl]
+	adc b
+	ld hl, actor_pyh
+	add hl, de
+	ld h, [hl]
+	ld l, a
+	call MapFlagsLH_XY
+	rla
+	ret c
+
+	ld hl, actor_pxl
+	add hl, de
+	ld a, [hl]
+	add c
+	ld [hl+], a
+	ld a, [hl]
+	adc b
+	ld [hl], a
+	ret
 
 ; A = First sprite tile to draw
 ; B = Attributes
@@ -233,12 +378,3 @@ SharedCameraSubtractCode_Bounded::
 	; A = low half of BC>>4
 	scf ; Set carry
 	ret
-
-
-; .----------------------------------------------------------------------------
-; | Actor code pointers
-; '----------------------------------------------------------------------------
-SECTION "actor_pointers", ROM0,ALIGN[8]
-ActorPointers:
-  dw ActorNone
-  dw ActorSneaker

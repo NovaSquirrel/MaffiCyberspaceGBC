@@ -8,9 +8,13 @@ PAGE_ALIGN_BLOCK_COLOR = False
 PAGE_ALIGN_BLOCK_FLAGS = True
 PAGE_ALIGN_BLOCK_INTERACTION = False
 
-SECTION_TYPE_APPEARANCE  = "ROMX,BANK[1]"
+SECTION_TYPE_APPEARANCE  = "ROMX"
 SECTION_TYPE_FLAGS       = "ROM0"
-SECTION_TYPE_INTERACTION = "ROMX,BANK[2]"
+SECTION_TYPE_INTERACTION = "ROMX"
+
+SECTION_NAME_APPEARANCE  = "DrawPlayfield"
+SECTION_NAME_FLAGS       = "BlockFlags"
+SECTION_NAME_INTERACTION = "Player"
 
 FORCE_256_BLOCK_TYPES = False
 
@@ -166,16 +170,16 @@ if block_count > 256:
 only_sixty_four_blocks = block_count <= 64 and not FORCE_256_BLOCK_TYPES
 
 outfile.write('; This is automatically generated. Edit "%s" instead\n' % block_definition_filename)
-outfile.write('include "res/blockenum.inc"\n')
+outfile.write('include "res/block_enum.inc"\n')
 if only_sixty_four_blocks:
-	outfile.write('\nSECTION "BlockAppearance", %s, ALIGN[8]\n\n' % SECTION_TYPE_APPEARANCE)
+	outfile.write('\nSECTION FRAGMENT "%s", %s, ALIGN[8]\n\n' % (SECTION_NAME_APPEARANCE, SECTION_TYPE_APPEARANCE))
 
 	# Block appearance information (four bytes per block, array of structs)
 	outfile.write('BlockAppearance::\n')
 	for b in all_blocks:
 		outfile.write('\tdb $%.2x, $%.2x, $%.2x, $%.2x ; %s\n' % (b['tiles'][0] & 255, b['tiles'][1] & 255, b['tiles'][2] & 255, b['tiles'][3] & 255, b['name']))
 else:
-	outfile.write('\nSECTION "BlockAppearance", %s, ALIGN[10]\n\n' % SECTION_TYPE_APPEARANCE)
+	outfile.write('\nSECTION FRAGMENT "%s", %s, ALIGN[10]\n\n' % (SECTION_NAME_APPEARANCE, SECTION_TYPE_APPEARANCE))
 
 	# Block appearance information (four bytes per block, struct of arrays)
 	outfile.write('BlockAppearance::\n')
@@ -188,18 +192,18 @@ else:
 				outfile.write('\tdb $%.2x ; %s\n' % (all_blocks[i]['tiles'][corner] & 255, all_blocks[i]['name']))
 
 if PAGE_ALIGN_BLOCK_COLOR:
-	outfile.write('\nSECTION "BlockAppearanceColor", %s, ALIGN[8]\n\n' % SECTION_TYPE_APPEARANCE)
+	outfile.write('\nSECTION FRAGMENT "%s", %s, ALIGN[8]\n\n' % (SECTION_NAME_APPEARANCE, SECTION_TYPE_APPEARANCE))
 else:
-	outfile.write('\nSECTION "BlockAppearanceColor", %s\n\n' % SECTION_TYPE_APPEARANCE)
+	outfile.write('\nSECTION FRAGMENT "%s", %s\n\n' % (SECTION_NAME_APPEARANCE, SECTION_TYPE_APPEARANCE))
 
 outfile.write('BlockAppearanceColor::\n')
 for b in all_blocks:
 	outfile.write('\tdb $%.2x ; %s\n' % (b['tiles'][0] >> 8, b['name']))
 
 if PAGE_ALIGN_BLOCK_FLAGS:
-	outfile.write('\nSECTION "BlockFlags", %s, ALIGN[8]\n\n' % SECTION_TYPE_FLAGS)
+	outfile.write('\nSECTION FRAGMENT "%s", %s, ALIGN[8]\n\n' % (SECTION_NAME_FLAGS, SECTION_TYPE_FLAGS))
 else:
-	outfile.write('\nSECTION "BlockFlags", %s\n\n' % SECTION_TYPE_FLAGS)
+	outfile.write('\nSECTION FRAGMENT "%s", %s\n\n' % (SECTION_NAME_FLAGS, SECTION_TYPE_FLAGS))
 
 outfile.write('BlockFlags::\n')
 for b in all_blocks:
@@ -207,9 +211,9 @@ for b in all_blocks:
 	  (b['solid'] * 0x80, b['class'], b['name']))
 
 if PAGE_ALIGN_BLOCK_INTERACTION:
-	outfile.write('\nSECTION "BlockInteractions", %s, ALIGN[8]\n\n' % SECTION_TYPE_INTERACTION)
+	outfile.write('\nSECTION FRAGMENT "%s", %s, ALIGN[8]\n\n' % (SECTION_NAME_INTERACTION, SECTION_TYPE_INTERACTION))
 else:
-	outfile.write('\nSECTION "BlockInteractions", %s\n\n' % SECTION_TYPE_INTERACTION)
+	outfile.write('\nSECTION FRAGMENT "%s", %s\n\n' % (SECTION_NAME_INTERACTION, SECTION_TYPE_INTERACTION))
 
 # Write all interaction type tables corresponding to each interaction set
 for interaction, routines in all_interactions.items():
