@@ -19,6 +19,7 @@ include "include/macros.inc"
 include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
 include "res/block_enum.inc"
+include "res/actor_enum.inc"
 
 SECTION FRAGMENT "Player", ROMX
 
@@ -27,11 +28,43 @@ RunPlayer::
 	; | Move the player
 	; '----------------------------------------------------
 
+	; Count down the timers
+	ld hl, PaintShootDiagonalTimer
+	ld a, [hl] ; HL: PaintShootDiagonalTimer
+	or a
+	jr z, :+
+		dec [hl]
+	:
+	inc hl
+	ld a, [hl] ; HL: PaintShootingTimer
+	or a
+	jr z, :+
+		dec [hl]
+	:
+	inc hl
+	ld a, [hl] ; HL: PaintRefillCooldown
+	or a
+	jr z, :+
+		dec [hl]
+		jr .NoRefill
+	:
+	; PaintRefillCooldown is zero, so refill some paint
+	ld a, [PaintAmount]
+	inc a
+	jr z, :+
+		ld [PaintAmount], a
+	:
+	.NoRefill:
+
+	; -------------------------------------------
+
 	ldh a, [KeyDown]
 	and PADF_UP
 	jr z, .NoUp
 		ld a, DIRECTION_UP
 		ld [PlayerDrawDirection], a
+		ld a, DIRECTION8_NORTH
+		ld [PaintShootDirection], a
 
 		ldh a, [PlayerPYL]
 		sub 16
@@ -58,6 +91,8 @@ RunPlayer::
 	jr z, .NoDown
 		ld a, DIRECTION_DOWN
 		ld [PlayerDrawDirection], a
+		ld a, DIRECTION8_SOUTH
+		ld [PaintShootDirection], a
 
 		ldh a, [PlayerPYL]
 		add 16
@@ -84,6 +119,8 @@ RunPlayer::
 	jr z, .NoLeft
 		ld a, DIRECTION_LEFT
 		ld [PlayerDrawDirection], a
+		ld a, DIRECTION8_WEST
+		ld [PaintShootDirection], a
 
 		ldh a, [PlayerPXL]
 		sub 16
@@ -110,6 +147,8 @@ RunPlayer::
 	jr z, .NoRight
 		ld a, DIRECTION_RIGHT
 		ld [PlayerDrawDirection], a
+		ld a, DIRECTION8_EAST
+		ld [PaintShootDirection], a
 
 		ldh a, [PlayerPXL]
 		add 16
@@ -130,7 +169,167 @@ RunPlayer::
 			inc [hl]
 		:
 	.NoRight:
+
+	; Do diagonals too
+	ldh a, [KeyDown]
+	ld b, a
+	and PADF_RIGHT|PADF_DOWN
+	cp  PADF_RIGHT|PADF_DOWN
+	jr nz, :+
+		ld a, DIRECTION8_SOUTHEAST
+		call DoDiagonalLock
+	:
+	ld a, b
+	and PADF_LEFT|PADF_DOWN
+	cp  PADF_LEFT|PADF_DOWN
+	jr nz, :+
+		ld a, DIRECTION8_SOUTHWEST
+		call DoDiagonalLock
+	:
+	ld a, b
+	and PADF_RIGHT|PADF_UP
+	cp  PADF_RIGHT|PADF_UP
+	jr nz, :+
+		ld a, DIRECTION8_NORTHEAST
+		call DoDiagonalLock
+	:
+	ld a, b
+	and PADF_LEFT|PADF_UP
+	cp  PADF_LEFT|PADF_UP
+	jr nz, :+
+		ld a, DIRECTION8_NORTHWEST
+		call DoDiagonalLock
+	:
+
+	ld a, [PaintShootDiagonalTimer]
+	or a
+	jr z, :+
+		ld a, [PaintShootDiagonalDirection]
+		ld [PaintShootDirection], a
+	:
+
+	ldh a, [KeyNew]
+	and PADF_A
+	jr z, .NotShootStart
+	ld a, [PaintShootingTimer]
+	or a
+	jr nz, .NotShootStart
+		ld a, [PaintShootDirection]
+		ld [PaintShootDirectionLock], a
+
+		ld a, 12
+		ld [PaintShootingTimer], a
+	.NotShootStart:
+
+	ld a, [PaintShootingTimer]
+	cp 11
+	jr nz, .NoFlick
+	ld hl, PaintAmount
+	ld a, [hl]
+	sub 64
+	jr c, .NoFlick
+		ld [hl], a
+		ld a, 10
+		ld [PaintRefillCooldown], a
+
+		ld hl, PaintShotID
+		inc [hl]
+
+		; Get X and Y speeds
+		ld a, [PaintShootDirectionLock]
+		add a, a
+		ld hl, PaintVelocities
+		add_hl_a
+		ld a, [hl+]
+		ldh [temp1], a
+		ld a, [hl]
+		ldh [temp2], a
+
+		ld a, [PaintShootDirectionLock]
+		ld b, a
+		add a ; * 2
+		add a ; * 4
+		add b ; * 5
+		add a ; * 10
+		add a ; * 20
+		ld de, PaintLineCoordinates
+		add_de_a
+		ld b, 5
+	:	push bc
+		call MakeFlickParticle
+		pop bc
+		jr nc, :+
+		dec b
+		jr nz, :-
+	:
+	.NoFlick:
+
 	ret
+
+DoDiagonalLock:
+	ld [PaintShootDiagonalDirection], a
+	ld a, 4
+	ld [PaintShootDiagonalTimer], a
+	ret
+
+PaintVelocities:
+	db 16,   0
+	db 16,   16
+	db 0,    16
+	db -16,  16
+	db -16,  0
+	db -16, -16
+	db 0,   -16
+	db 16,  -16
+PaintLineCoordinates:
+; 1, 0
+	dw 0, 128
+	dw 128, 128
+	dw -128, 128
+	dw 256, 128
+	dw -256, 128
+; 1, 1
+	dw 128, 128
+	dw 224, 32
+	dw 32, 224
+	dw 320, -64
+	dw -64, 320
+; 0, 1
+	dw 128, 0
+	dw 128, -128
+	dw 128, 128
+	dw 128, -256
+	dw 128, 256
+; -1, 1
+	dw 128, -128
+	dw 32, -224
+	dw 224, -32
+	dw -64, -320
+	dw 320, 64
+; -1, 0
+	dw 0, -128
+	dw -128, -128
+	dw 128, -128
+	dw -256, -128
+	dw 256, -128
+; -1, -1
+	dw -128, -128
+	dw -224, -32
+	dw -32, -224
+	dw -320, 64
+	dw 64, -320
+; 0, -1
+	dw -128, 0
+	dw -128, 128
+	dw -128, -128
+	dw -128, 256
+	dw -128, -256
+; 1, -1
+	dw -128, 128
+	dw -32, 224
+	dw -224, 32
+	dw 64, 320
+	dw -320, -64
 
 ; ---------------------------------------------------------
 DrawPlayer::
@@ -363,6 +562,76 @@ SharedCameraSubtractCode:
 	enum_elem PLAYER_FRAME_U
 	enum_elem PLAYER_FRAME_U2
 	enum_elem PLAYER_FRAME_U3
+
+; ---------------------------------------------------------
+
+MakeFlickParticle:
+	; Find a free slot
+	ld hl, PlayerProjectiles
+	ld bc, ACTOR_SIZE
+.FindFree:
+	ld a, [hl]
+	or a
+	jr z, .Found
+	add hl, bc
+	ld a, l
+	cp ACTOR_SIZE * PLAYER_PROJECTILE_COUNT
+	ret nc
+	jr .FindFree
+.Found:
+
+	xor a
+	ld [hl], ActorType_PaintProjectile
+	inc l
+	ld [hl+], a ; actor_state
+	ld [hl+], a ; actor_timer
+
+	ldh a, [temp2]
+	ld [hl+], a ; actor_vyl
+	ldh a, [temp1]
+	ld [hl+], a ; actor_vyh, reused for X
+
+	ldh a, [PlayerPYL]
+	ld c, a
+	ldh a, [PlayerPYH]
+	ld b, a
+	ld a, [de]
+	inc de
+	add c
+	ld [hl+], a ; actor_pyl
+	ld a, [de]
+	inc de
+	adc b
+	ld [hl+], a ; actor_pyh
+
+	ldh a, [PlayerPXL]
+	ld c, a
+	ldh a, [PlayerPXH]
+	ld b, a
+	ld a, [de]
+	inc de
+	add c
+	ld [hl+], a ; actor_pxl
+	ld a, [de]
+	inc de
+	adc b
+	ld [hl+], a ; actor_pxh
+
+	inc l ; Skip actor_vxl
+	inc l ; Skip actor_vxh
+
+	ld a, [PaintShotID]
+	ld [hl+], a ; actor_var1
+	xor a
+	ld [hl+], a ; actor_var2
+	ld [hl+], a ; actor_var3
+	ld [hl+], a ; actor_var4
+	ld [hl+], a
+
+	scf
+	ret
+
+; ---------------------------------------------------------
 
 SECTION "PlayerGraphics", ROMX, ALIGN[4]
 PlayerAnimationFrameGraphics::

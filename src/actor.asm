@@ -27,11 +27,29 @@ SECTION FRAGMENT "ActorCode", ROMX
 
 ; Run through all of the actors
 RunActors::
+; Run projectiles first so they display on top of enemies
+.RunProjectiles:
+	ld d, HIGH(PlayerProjectiles)
+	ld e, 0
+.ProjectileLoop:
+	ld a, [de]
+	or a
+	call nz, .call
+
+	ld a, e
+	add ACTOR_SIZE
+	cp ACTOR_SIZE * PLAYER_PROJECTILE_COUNT
+	jr z, .RunNormalActors
+	ld e, a
+	jr .ProjectileLoop
+
+; Other actors, including enemies
+.RunNormalActors:
 	; Reset the enemy count so we can start counting up from zero
 	xor a
 	ld [EnemyCount], a
 
-	ld d, ActorData>>8
+	ld d, HIGH(ActorData)
 	ld e, 0
 .loop:
 	ld a, [de]
@@ -40,19 +58,20 @@ RunActors::
 
 	ld a, e
 	add ACTOR_SIZE
-	ret z
 	ld e, a
+	ret z
 	jr .loop
 
 .call:
 	add a ; multiply by 2, mask off direction bit
-	ld h, ActorPointers>>8
+	ld h, HIGH(ActorPointers)
 	ld l, a
 
 	ld a, [hl+]
 	ld h, [hl]
 	ld l, a
 	jp hl
+
 
 ; .----------------------------------------------------------------------------
 ; | Per-actor code
@@ -101,10 +120,16 @@ ActorSneaker::
 		jr z, .DoneMoveX
 		jr nc, .GoRight
 	.GoLeft:
+		ld a, [de]
+		or 128
+		ld [de], a
 		ld a, -$08
 		call ActorWalkXAndBump
 		jr .DoneMoveX
 	.GoRight:
+		ld a, [de]
+		and 127
+		ld [de], a 
 		ld a, $08
 		call ActorWalkXAndBump
 	.DoneMoveX:
@@ -125,6 +150,64 @@ ActorKitty::
 	add a, $58
 	ld b, 0
 	jp DrawActor_16x16
+
+ActorPaintProjectile::
+	ld hl, actor_vyl
+	add hl, de
+
+	; Add X and Y speed to the position
+	push de
+	ld a, [hl+] ; Y
+	ld c, a
+	sex
+	ld b, a
+
+	ld a, [hl+] ; X
+	ld e, a
+	sex
+	ld d, a
+
+	ld a, [hl] ; actor_pyl
+	add c
+	ld [hl+], a
+	ld a, [hl] ; actor_pyh
+	adc b
+	ld [hl+], a
+	ld a, [hl] ; actor_pxl
+	add e
+	ld [hl+], a
+	ld a, [hl] ; actor_pxh
+	adc d
+	ld [hl+], a
+	pop de
+
+	ld hl, actor_timer
+	add hl, de
+	ld a, [hl]
+	inc [hl]
+	cp 24
+	jr nz, :+
+		xor a
+		ld [de], a
+		ret
+	:
+	ld hl, PaintOffset
+	add_hl_a
+	ld c, [hl]
+
+	call RandomByte
+	and OAMF_YFLIP|OAMF_XFLIP
+	or PALETTE_PLAYER
+	ld b, a
+	ld a, $2C
+	call DrawActor_8x16_YOffset
+	ret
+
+
+PaintOffset:
+def PaintOffsetOffset equ 4
+
+	db 0+PaintOffsetOffset, -3+PaintOffsetOffset, -6+PaintOffsetOffset, -8+PaintOffsetOffset, -10+PaintOffsetOffset, -12+PaintOffsetOffset, -14+PaintOffsetOffset, -15+PaintOffsetOffset, -16+PaintOffsetOffset, -17+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -17+PaintOffsetOffset, -16+PaintOffsetOffset, -15+PaintOffsetOffset, -14+PaintOffsetOffset, -12+PaintOffsetOffset, -10+PaintOffsetOffset, -8+PaintOffsetOffset, -6+PaintOffsetOffset, -3+PaintOffsetOffset, 0+PaintOffsetOffset
 
 EnemyCommon:
 	ld hl, EnemyCount
@@ -166,12 +249,11 @@ ActorWalkYAndBump:
 
 	ld hl, actor_pyl
 	add hl, de
-	ld a, [hl+]
+	ld a, [hl+] ; HL: PYL --> PYH
 	add c
-	ld a, [hl]
+	ld a, [hl+] ; HL: PYH --> PXL
 	adc b
-	ld hl, actor_pxh
-	add hl, de
+	inc l       ; HL: PXL --> PXH
 	ld l, [hl]
 	ld h, a
 	call MapFlagsLH_XY
@@ -195,12 +277,11 @@ ActorWalkXAndBump:
 
 	ld hl, actor_pxl
 	add hl, de
-	ld a, [hl+]
+	ld a, [hl+] ; HL: PXL --> PXH
 	add c
-	ld a, [hl]
+	ld a, [hl-] ; HL: PXH --> PXL
 	adc b
-	ld hl, actor_pyh
-	add hl, de
+	dec l       ; HL: PXL --> PYH
 	ld h, [hl]
 	ld l, a
 	call MapFlagsLH_XY
@@ -216,6 +297,8 @@ ActorWalkXAndBump:
 	adc b
 	ld [hl], a
 	ret
+
+; ---------------------------------------------------------
 
 ; A = First sprite tile to draw
 ; B = Attributes
@@ -240,6 +323,8 @@ DrawActorFlipped:
 	pop af
 	ld [de], a ; restore direction
 	ret
+
+; ---------------------------------------------------------
 
 ; A = First sprite tile to draw
 ; B = Attributes
@@ -344,9 +429,92 @@ DrawActor_16x16:
 	ld [hl+],a ; set tile number
 	ld a, b
 	ld [hl+],a ; set attribute
-skipdraw:
 
 ; --------------------------------
+	pop de ; restore "this"
+
+	ld a, l
+	ldh [OAMWrite], a
+	ret
+
+; ---------------------------------------------------------
+
+; A = Sprite tile to draw
+; B = Attributes
+; C = Vertical offset
+; Draws actor DE
+DrawActor_8x16:
+	ld c, 0
+DrawActor_8x16_YOffset:
+	; temp1 = Sprite tile
+	; temp2 = Attributes
+	; temp3 = Vertical offset
+
+	; Store the tile numbers and attributes to use
+	ldh [temp1], a
+	ld a, b
+	ldh [temp2], a ; Attributes
+	ld a, c
+	ldh [temp3], a ; Vertical offset
+
+; --------------------------------
+; Convert X and Y positions
+	ld hl, actor_pyl
+	add hl, de
+	push de ; push "this" because DE will get used for screen coordinates
+
+	; ---------------------------------
+	; Get Y position first
+	ldh a, [CameraY+0]
+	ld c, a
+	ldh a, [CameraY+1]
+	ld b, a
+	
+	ld a, [hl+] ; HL: PYL --> PYH
+	sub c
+	ld c, a
+	ld a, [hl+] ; HL: PYH --> PXL
+	call SharedCameraSubtractCode_Bounded
+	jr nc, .out_of_bounds
+	;add 16-16
+	ld e, a ; E = screen Y position
+	ldh a, [temp3]
+	add a, e
+	ld e, a
+
+	; Get X position next
+	ldh a, [CameraX+0]
+	ld c, a
+	ldh a, [CameraX+1]
+	ld b, a
+
+	ld a, [hl+] ; HL: PXL --> PXH
+	sub c
+	ld c, a
+	ld a, [hl]  ; HL: PXH
+	call SharedCameraSubtractCode_Bounded
+	jr c, :+
+	.out_of_bounds:
+		pop de
+		ret
+	:
+	add 8-4
+	ld d, a ; D = screen X position
+	; ---------------------------------
+
+	ld h, high(OamBuffer)
+	ldh a, [OAMWrite]
+	ld l, a
+
+	ld a, e
+	ld [hl+], a ; Y position
+	ld a, d
+	ld [hl+], a ; X position
+	ldh a, [temp1]
+	ld [hl+],a ; set tile number
+	ldh a, [temp2]
+	ld [hl+],a ; set attribute
+
 	pop de ; restore "this"
 
 	ld a, l

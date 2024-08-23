@@ -64,6 +64,18 @@ StartLevel::
 	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJOFF|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00|LCDCF_WINON
 	ldh [LYC_Interrupt_LCDC], a
 
+	ld a, 255
+	ld hl, PaintAmount
+	ld [hl+], a ; PaintAmount
+	xor a
+	ld [hl+], a ; PaintRefillCooldown
+	ld [hl+], a ; PlayerShootX
+	ld [hl+], a ; PlayerShootY
+	ld [hl+], a ; PlayerShootDiagonalX
+	ld [hl+], a ; PlayerShootDiagonalY
+	ld [hl+], a ; PlayerShootDiagonalTimer
+	ld [hl+], a ; PlayerShootingTimer
+
 	; Clear all of OAM
 	ld hl, OamBuffer
 	ld c, 0

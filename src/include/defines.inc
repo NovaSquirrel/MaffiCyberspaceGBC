@@ -6,6 +6,15 @@ DEF DIRECTION_UP    EQU 3
 DEF PALETTE_FACE    EQU 6
 DEF PALETTE_PLAYER  EQU 7
 
+DEF DIRECTION8_EAST      EQU 0
+DEF DIRECTION8_SOUTHEAST EQU 1
+DEF DIRECTION8_SOUTH     EQU 2
+DEF DIRECTION8_SOUTHWEST EQU 3
+DEF DIRECTION8_WEST      EQU 4
+DEF DIRECTION8_NORTHWEST EQU 5
+DEF DIRECTION8_NORTH     EQU 6
+DEF DIRECTION8_NORTHEAST EQU 7
+
 ; .----------------------------------------------------------------------------
 ; | Actor information
 ; '----------------------------------------------------------------------------
@@ -85,4 +94,32 @@ MACRO get_block_flags
 	ld h, HIGH(BlockFlags)
 	ld l, a
 	ld a, [hl]
+ENDM
+
+; This macro is meant for whe HL is already pointing at one item within an actor,
+; and it will switch from one field to another. One cycle faster than the "add hl, de" way.
+MACRO switch_hl_to_field
+	if \2 - \1 == 1
+		inc l
+	elif \2 - \1 == 2 
+		inc l
+		inc l
+	elif \2 - \1 == 3
+		inc l
+		inc l
+		inc l
+	elif \2 - \1 == -1
+		dec l
+	elif \2 - \1 == -2
+		dec l
+		dec l
+	elif \2 - \1 == -3
+		dec l
+		dec l
+		dec l
+	else
+		ld a, l
+		add \2 - \1
+		ld l, a
+	endc
 ENDM

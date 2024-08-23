@@ -16,7 +16,7 @@
 ;
 
 include "include/macros.inc"
-include "res/blockenum.inc"
+include "res/block_enum.inc"
 
 SECTION "Maze", ROM0
 
