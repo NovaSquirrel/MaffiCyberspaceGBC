@@ -134,6 +134,10 @@ palette wall_palette
 solid
 w 12,1
 
++Paint
+palette purple_palette
+w 0,6
+
 #######################################
 # Special floors
 #######################################

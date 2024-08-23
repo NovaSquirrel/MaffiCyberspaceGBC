@@ -68,11 +68,11 @@ StartLevel::
 	ld hl, PaintAmount
 	ld [hl+], a ; PaintAmount
 	xor a
-	ld [hl+], a ; PaintRefillCooldown
-	ld [hl+], a ; PlayerShootX
-	ld [hl+], a ; PlayerShootY
-	ld [hl+], a ; PlayerShootDiagonalX
-	ld [hl+], a ; PlayerShootDiagonalY
+	ld [hl+], a ; PaintAmountShownOnscreen
+	ld [hl+], a ; PaintShootDirection
+	ld [hl+], a ; PaintShootDiagonalDirection
+	ld [hl+], a ; PaintShootDirectionLock
+	ld [hl+], a ; PaintShotID
 	ld [hl+], a ; PlayerShootDiagonalTimer
 	ld [hl+], a ; PlayerShootingTimer
 
@@ -117,23 +117,20 @@ Gameplay::
 	ld a, $f0
 	ld c, 20
 	call memset8
-	ld hl, _SCRN1+1
-	ld a, $f5
-	ld c, 8
-	call memset8
-	inc l
-	ld a, $f6
-	ld c, 4
-	call memset8
-	inc l
+	ld hl, _SCRN1+2 ; Critters left
 	ld a, $f8
 	ld [hl+], a
 	ld a, $f9
 	ld [hl+], a
-	ld a, $fa
-	ld [hl+], a
-	ld a, $fb
-	ld [hl+], a
+	ld hl, _SCRN1+6 ; Paint bar
+	ld a, $f5
+	ld c, 8
+	call memset8
+	inc l
+	ld a, $f6       ; Hearts
+	ld c, 4
+	call memset8
+
 ;	ld a, 1
 ;	ldh [rVBK], a
 ;	ld hl, _SCRN1
@@ -269,6 +266,7 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	ld a, BANK(DrawPlayer)
 	ld [rROMB0], a
 	call DrawPlayer
+	call DrawPaintBar
 
 	ld a, BANK(RunActors)
 	ld [rROMB0], a
@@ -280,7 +278,10 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 
 	jp forever
 
-; -----------------------------------------------
+; .----------------------------------------------------------------------------
+; | DMG-specific vblank tasks
+; '----------------------------------------------------------------------------
+
 PreVblankForDMG:
 	; If it's in progress keep going!!
 	ld a, [DMG_PlayerAnimationFrame_InProgress]

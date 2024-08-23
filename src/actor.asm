@@ -18,6 +18,8 @@
 include "include/macros.inc"
 include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
+include "res/actor_enum.inc"
+include "res/block_enum.inc"
 
 SECTION FRAGMENT "ActorCode", ROMX
 
@@ -187,10 +189,28 @@ ActorPaintProjectile::
 	inc [hl]
 	cp 24
 	jr nz, :+
+		; Paint the ground
+		ld hl, actor_pxh
+		add hl, de
+		ld b, [hl]
+		switch_hl_to_field actor_pxh, actor_pyl
+		ld a, [hl+]
+		sub PaintCollisionYOffset*16
+		ld a, [hl]
+		sbc 0
+		ld h, a
+		ld l, b
+		call MapPointerLH_XY
+		ld a, [hl]
+		cp BlockType_Floor
+		ld a, BlockType_Paint
+		call z, BlockChangeForActor
+
 		xor a
 		ld [de], a
 		ret
 	:
+
 	ld hl, PaintOffset
 	add_hl_a
 	ld c, [hl]
@@ -205,13 +225,143 @@ ActorPaintProjectile::
 
 
 PaintOffset:
+def PaintCollisionYOffset equ 6
 def PaintOffsetOffset equ 4
-
 	db 0+PaintOffsetOffset, -3+PaintOffsetOffset, -6+PaintOffsetOffset, -8+PaintOffsetOffset, -10+PaintOffsetOffset, -12+PaintOffsetOffset, -14+PaintOffsetOffset, -15+PaintOffsetOffset, -16+PaintOffsetOffset, -17+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -17+PaintOffsetOffset, -16+PaintOffsetOffset, -15+PaintOffsetOffset, -14+PaintOffsetOffset, -12+PaintOffsetOffset, -10+PaintOffsetOffset, -8+PaintOffsetOffset, -6+PaintOffsetOffset, -3+PaintOffsetOffset, 0+PaintOffsetOffset
 
 EnemyCommon:
+	call CollideWithProjectiles
+	jr nc, :+
+		xor a
+		ld [de], a
+		pop hl
+		ret
+	:
+
 	ld hl, EnemyCount
 	inc [hl]
+	ret
+
+CollideWithProjectiles:
+	; Check for collision with player projectiles
+	ld hl, actor_pyl
+	add hl, de
+	ld a, [hl+]
+	add PaintCollisionYOffset*16 ; <-- Move the actor's temporary position down to match the way paint projectiles subtract a bit
+	ldh [temp1], a ; pyl
+	ld a, [hl+]
+	adc 0
+	ldh [temp2], a ; pyh
+	ld a, [hl+]
+	ldh [temp3], a ; pxl
+	ld a, [hl+]
+	ldh [temp4], a ; pxh
+	ld hl, actor_damaged_by_id
+	add hl, de
+	ld a, [hl]
+	ldh [temp5], a ; damaged by ID
+
+	push de
+	ld hl, PlayerProjectiles + ACTOR_SIZE * (PLAYER_PROJECTILE_COUNT-1)
+.CollisionLoop:
+	ld a, [hl]
+	cp ActorType_PaintProjectile
+	jr nz, .Next
+		push hl
+		; Actor's actor_damaged_by_id can't equal the paint shot's var1 (which is the paint shot ID)
+		switch_hl_to_field actor_type, actor_var1
+		ldh a, [temp5]
+		cp [hl]
+		jr z, .PopNext
+
+		; .------------------------------------------------
+		; | Check Y coordinates
+		; '------------------------------------------------
+
+		switch_hl_to_field actor_var1, actor_pyl
+	
+		ldh a, [temp1] ; pyl
+		ld c, a
+		ld a, [hl+] ; HL: actor_pyl
+		sub c
+		ld c, a
+		ldh a, [temp2] ; pyh
+		ld b, a
+		ld a, [hl+] ; HL: actor_pyh
+		sbc b
+		ld b, a
+
+		sla c ; BC *= 2
+		rl b
+		jr nc, :+ ; Flip the sign if it's negative
+			xor a
+			sub c
+			ld c, a
+			ld a, 0
+			sbc b
+			ld b, a
+		:
+
+		; BC should be < (height1+height2)
+		; so BC < ((12*16)+(4*16)) or 256
+		; so B == 0 is enough
+		ld a, b
+		or a
+		jr nz, .PopNext
+
+		; .------------------------------------------------
+		; | Check X coordinates
+		; '------------------------------------------------
+
+		; HL = actor_pyh
+		ldh a, [temp3] ; pxl
+		ld c, a
+		ld a, [hl+] ; HL: actor_pxl
+		sub c
+		ld c, a
+		ldh a, [temp4] ; pxh
+		ld b, a
+		ld a, [hl+] ; HL: actor_pxh
+		sbc b
+		ld b, a
+
+		sla c ; BC *= 2
+		rl b
+		jr nc, :+ ; Flip the sign if it's negative
+			xor a
+			sub c
+			ld c, a
+			ld a, 0
+			sbc b
+			ld b, a
+		:
+
+		; BC should be < (width1+width2)
+		; so BC < ((16*16)+(8*16)) or 384 or $180
+		; so B == 0 and C >= $80 is enough
+		ld a, b
+		or a
+		jr nz, .PopNext
+		bit 7, c
+		jr nz, .PopNext
+
+		; -------------------------------------------------
+		; There is a collision!!
+		pop hl ; HL = projectile that was collided with
+		pop de ; DE = this, still
+		scf    ; True
+		ret
+
+		.PopNext:
+		pop hl
+	.Next:
+	ld a, l
+	sub ACTOR_SIZE
+	ld l, a
+	jr nc, .CollisionLoop
+.NoCollision:
+	pop de
+	or a ; Clear carry
 	ret
 
 ; .----------------------------------------------------------------------------

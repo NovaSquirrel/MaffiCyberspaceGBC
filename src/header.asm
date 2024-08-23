@@ -143,7 +143,7 @@ EntryPoint:
 
 	ld de, PlayfieldTileset
 	ld hl, _VRAM9000
-	ld b, 6*16
+	ld b, 8*16
 	call pb16_unpack_block
 
 	ld de, StatusTileset

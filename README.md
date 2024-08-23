@@ -1,6 +1,6 @@
 # Maffi cyberspace game (GBC version)
 
-A maze game in progress that will try to fit into 32KB.
+A game with randomly generated mazes, cyberspace aesthetics, and paint.
 
 Used [gb-boilerplate](https://github.com/ISSOtm/gb-boilerplate) as a starting point.
 

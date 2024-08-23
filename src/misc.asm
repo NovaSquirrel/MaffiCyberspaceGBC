@@ -15,6 +15,7 @@
 ; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
+include "include/defines.inc"
 include "include/macros.inc"
 include "include/hardware.inc/hardware.inc"
 
@@ -364,4 +365,276 @@ MapFlagsLH_XY::
 	ld h, HIGH(BlockFlags)
 	ld l, a
 	ld a, [hl]
+	ret
+
+; HL = Block to change
+; A = Block to change it to
+BlockChangeForActor::
+	cp [hl]
+	ret z  ; If it's already correct, skip everything else
+	ld  [hl], a
+	ldh [temp1], a
+	ld a, BANK(UpdateRow)
+	ld [rROMB0], a
+
+	push bc
+	push de
+
+	; Check if the block is actually on-screen
+	; ???? yyyy | yyxx xxxx 
+	ld a, l
+	and 63
+	ld b, a ; B = block X position
+	ldh [temp2], a
+	
+	ldh a, [CameraX+1]
+	sub 1
+	jr c, .OkLeft
+	cp b
+	jp nc, .Exit
+	.OkLeft:
+
+	ldh a, [CameraX+1]
+	add 10+1
+	jr c, .OkRight
+	cp b
+	jp c, .Exit
+	.OkRight:
+
+	ld a, l ; ???? yyyy | yyxx xxxx 
+	add a
+	rl h    ; ???y yyyy | yxxx xxx0 
+	add a
+	rl h	; ??yy yyyy | xxxx xx00 
+	ld a, h
+	and 63
+	ld b, a
+	ldh [temp3], a
+
+	ldh a, [CameraY+1]
+	sub 1
+	jr c, .OkUp
+	cp b
+	jr nc, .Exit
+	.OkUp:
+
+	ldh a, [CameraY+1]
+	add 9+1
+	jr c, .OkDown
+	cp b
+	jr c, .Exit
+	.OkDown:
+
+	; temp2 and temp3 have the block coordinates
+	; Y position
+	ldh a, [temp3]
+	and 15
+	add a
+	ld l, a
+	ld h, 0
+	; Multiply by 5
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	add hl, hl
+	ld de, _SCRN0
+	add hl, de
+
+	; X position
+	ldh a, [temp2]
+	and 15
+	add a
+	add_hl_a
+
+	; HL = the tilemap position now
+	push hl
+	ldh a, [temp1] ; Block type
+	add a
+	add a
+	ld de, BlockAppearance
+	add_de_a
+
+	wait_vram
+	ld a, [de]  ; 2
+	ld [hl+], a ; 2
+	inc e       ; 1
+	ld a, [de]  ; 2
+	ld [hl], a  ; 2
+	ld bc, 32-1 ; =  9
+	add hl, bc
+	inc e
+	wait_vram
+	ld a, [de]  ; 2
+	ld [hl+], a ; 2
+	inc e       ; 1
+	ld a, [de]  ; 2
+	ld [hl], a  ; 2
+	            ; = 9
+	pop hl
+
+	; -----------------------
+	; On Game Boy Color, do the attribute too
+	ldh a, [IsNotGameBoyColor]
+	or a
+	jr nz, .Exit
+	ld a, 1
+	ldh [rVBK], a
+
+	; Get the attribute to write
+	ldh a, [temp1] ; Block type
+	ld de, BlockAppearanceColor
+	add_de_a
+	ld a, [de]
+	ld b, a
+
+	wait_vram
+	ld [hl], b ; 2
+	inc l      ; 1
+	ld [hl], b ; 2
+	set 5, l   ; 2
+	ld [hl], b ; 2
+	dec l      ; 1
+	ld [hl], b ; 2
+	           ; = 12
+	xor a
+	ldh [rVBK], a
+.Exit:
+	pop de
+	pop bc
+	ld a, BANK(RunActors)
+	ld [rROMB0], a
+	ret
+
+; -----------------------------------------------
+; Actor related ROM0 routines
+
+FindFreeActorSlot::
+	; I could use "add hl, bc" to iterate, but that would only be one cycle faster and
+	; also potentially require pushing/popping BC, which would eat 8 cycles unconditionally,
+	; so I think this is faster overall.
+	ld hl, ActorData
+.FindFree:
+	ld a, [hl]
+	or a
+	jr z, .Found
+	ld a, l
+	add ACTOR_SIZE
+	ld l, a
+	jr nz, .FindFree
+	or a ; False
+	ret
+.Found:
+	scf ; True
+	ret
+
+; -----------------------------------------------
+; LCD copy routines, by ISSOtm
+
+SECTION "LCDMemsetSmallFromB", ROM0
+
+; Writes a value to all bytes in an area of memory
+; Works when the destination is in VRAM, even while the LCD is on
+; @param hl Beginning of area to fill
+; @param c Amount of bytes to write (0 causes 256 bytes to be written)
+; @param a Value to write
+; @return c 0
+; @return hl Pointer to the byte after the last written one
+; @return b Equal to a
+; @return f Z set, C reset
+LCDMemsetSmall::
+	ld b, a
+; Writes a value to all bytes in an area of memory
+; Works when the destination is in VRAM, even while the LCD is on
+; Protip: you may want to use `lb bc,` to set both B and C at the same time
+; @param hl Beginning of area to fill
+; @param c Amount of bytes to write (0 causes 256 bytes to be written)
+; @param b Value to write
+; @return c 0
+; @return hl Pointer to the byte after the last written one
+; @return b Equal to a
+; @return f Z set, C reset
+LCDMemsetSmallFromB::
+	wait_vram
+	ld a, b
+	ld [hli], a
+	dec c
+	jr nz, LCDMemsetSmallFromB
+	ret
+
+SECTION "LCDMemset", ROM0
+
+; Writes a value to all bytes in an area of memory
+; Works when the destination is in VRAM, even while the LCD is on
+; @param hl Beginning of area to fill
+; @param bc Amount of bytes to write (0 causes 65536 bytes to be written)
+; @param a Value to write
+; @return bc 0
+; @return hl Pointer to the byte after the last written one
+; @return d Equal to parameter passed in a
+; @return a 0
+; @return f Z set, C reset
+LCDMemset::
+	ld d, a
+; Writes a value to all bytes in an area of memory
+; Works when the destination is in VRAM, even while the LCD is on
+; @param hl Beginning of area to fill
+; @param bc Amount of bytes to write (0 causes 65536 bytes to be written)
+; @param d Value to write
+; @return bc 0
+; @return hl Pointer to the byte after the last written one
+; @return a 0
+; @return f Z set, C reset
+LCDMemsetFromD::
+	wait_vram
+	ld a, d
+	ld [hli], a
+	dec bc
+	ld a, b
+	or c
+	jr nz, LCDMemsetFromD
+	ret
+
+SECTION "LCDMemcpySmall", ROM0
+
+; Copies a block of memory somewhere else
+; Works when the source or destination is in VRAM, even while the LCD is on
+; @param de Pointer to beginning of block to copy
+; @param hl Pointer to where to copy (bytes will be written from there onwards)
+; @param c Amount of bytes to copy (0 causes 256 bytes to be copied)
+; @return de Pointer to byte after last copied one
+; @return hl Pointer to byte after last written one
+; @return c 0
+; @return a Last byte copied
+; @return f Z set, C reset
+LCDMemcpySmall::
+	wait_vram
+	ld a, [de]
+	ld [hli], a
+	inc de
+	dec c
+	jr nz, LCDMemcpySmall
+	ret
+
+SECTION "LCDMemcpy", ROM0
+
+; Copies a block of memory somewhere else
+; Works when the source or destination is in VRAM, even while the LCD is on
+; @param de Pointer to beginning of block to copy
+; @param hl Pointer to where to copy (bytes will be written from there onwards)
+; @param bc Amount of bytes to copy (0 causes 65536 bytes to be copied)
+; @return de Pointer to byte after last copied one
+; @return hl Pointer to byte after last written one
+; @return bc 0
+; @return a 0
+; @return f Z set, C reset
+LCDMemcpy::
+	wait_vram
+	ld a, [de]
+	ld [hli], a
+	inc de
+	dec bc
+	ld a, b
+	or c
+	jr nz, LCDMemcpy
 	ret

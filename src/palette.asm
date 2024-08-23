@@ -64,20 +64,20 @@ BG_Palette:
   rgb 22, 22, 22 ; unused
   rgb 31, 31, 31 ; unused
 ; 3 purple
-  rgb  0,  0,  0
-  rgb 13, 13, 13
-  rgb 22, 22, 22
-  rgb 31, 31, 31
+  rgb $49/8, $41/8, $82/8
+  rgb $78/8, $64/8, $c6/8
+  rgb $9c/8, $8b/8, $db/8
+  rgb $ce/8, $aa/8, $ed/8
 ; 4 blue
-  rgb  0,  0,  0
-  rgb 13, 13, 13
-  rgb 22, 22, 22
-  rgb 31, 31, 31
+  rgb $2b/8, $4e/8, $95/8
+  rgb $27/8, $89/8, $cd/8
+  rgb $42/8, $bf/8, $e8/8
+  rgb $73/8, $ef/8, $e8/8
 ; 5 orange
-  rgb  0,  0,  0
-  rgb 13, 13, 13
-  rgb 22, 22, 22
-  rgb 31, 31, 31
+  rgb $ac/8, $32/8, $32/8
+  rgb $d9/8, $57/8, $63/8
+  rgb $fc/8, $a5/8, $70/8
+  rgb $ff/8, $e0/8, $b7/8
 ; 6
   rgb  0,  0,  0
   rgb 13, 13, 13
@@ -91,11 +91,17 @@ BG_Palette:
 
 Sprite_Palette:
 ; Sprite palette
-; 0 red
-  rgb  0,  0,  0
-  rgb  0,  0,  0
-  rgb 31,  0,  0
+; 0 cyberspace blue
+  rgb 0,  0,   0
+  rgb $2b/8-2,$4e/8-2, $95/8-2
+;  rgb $42/8-3, $bf/8-3, $e8/8-3
+;  rgb $00/8, $ae/8, $e8/8
+  rgb $42/8+1, $7a/8+1, $e8/8+1
   rgb 31, 31, 31
+; rgb  0,  0,  0
+; rgb  0,  0,  0
+; rgb 31,  0,  0
+; rgb 31, 31, 31
 ; 1 green
   rgb  0,  0,  0
   rgb  0,  0,  0
