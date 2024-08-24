@@ -46,6 +46,9 @@ StartLevel::
 	ld [ActorData + actor_pxl], a
 	ld [ActorData + actor_pyl + ACTOR_SIZE], a
 	ld [ActorData + actor_pxl + ACTOR_SIZE], a
+	ld a, $10
+	ld [ActorData + actor_health], a
+	ld [ActorData + actor_health + ACTOR_SIZE], a
 
 	ld a, ActorType_Sneaker
 	ld [ActorData + ACTOR_SIZE], a

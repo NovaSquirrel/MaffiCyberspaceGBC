@@ -587,10 +587,10 @@ MakeFlickParticle:
 	ld [hl+], a ; actor_state
 	ld [hl+], a ; actor_timer
 
+	ldh a, [temp1]
+	ld [hl+], a ; actor_vxl
 	ldh a, [temp2]
 	ld [hl+], a ; actor_vyl
-	ldh a, [temp1]
-	ld [hl+], a ; actor_vyh, reused for X
 
 	ldh a, [PlayerPYL]
 	ld c, a
@@ -617,9 +617,6 @@ MakeFlickParticle:
 	inc de
 	adc b
 	ld [hl+], a ; actor_pxh
-
-	inc l ; Skip actor_vxl
-	inc l ; Skip actor_vxh
 
 	ld a, [PaintShotID]
 	ld [hl+], a ; actor_var1

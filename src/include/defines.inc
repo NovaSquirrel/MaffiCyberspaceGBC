@@ -41,26 +41,26 @@ DEF DIRECTION8_NORTHEAST EQU 7
 DEF actor_type   = 0   ; %0000
 DEF actor_state  = 1   ; %0001
 DEF actor_timer  = 2   ; %0010
-DEF actor_vyl    = 3   ; %0011
-DEF actor_vyh    = 4   ; %0100
+DEF actor_vxl    = 3   ; %0011
+DEF actor_vyl    = 4   ; %0100
 DEF actor_pyl    = 5   ; %0101
 DEF actor_pyh    = 6   ; %0110
 DEF actor_pxl    = 7   ; %0111
 DEF actor_pxh    = 8   ; %1000
-DEF actor_vxl    = 9   ; %1001
-DEF actor_vxh    = 10  ; %1010
-DEF actor_var1   = 11  ; %1011
-DEF actor_var2   = 12  ; %1100
-DEF actor_var3   = 13  ; %1101
-DEF actor_var4   = 14  ; %1110
-DEF actor_unused = 15  ; %1111
+DEF actor_var1   = 9   ; %1001
+DEF actor_var2   = 10  ; %1010
+DEF actor_var3   = 11  ; %1011
+DEF actor_var4   = 12  ; %1100
+DEF actor_unused = 13  ; %1101
+DEF actor_unused2= 14  ; %1110
+DEF actor_unused3= 15  ; %1111
 
 ; Actor information (Extra)
 ; 0 Health
 ; 1 Damaged by ID
-; 2
-; 3
-; 4
+; 2 Knockback timer
+; 3 Knockback sign X
+; 4 Knockback sign Y
 ; 5
 ; 6
 ; 7
@@ -74,8 +74,11 @@ DEF actor_unused = 15  ; %1111
 ; F
 ;
 
-DEF actor_health        = 256 + 0
-DEF actor_damaged_by_id = 256 + 1
+DEF actor_health           = 256 + 0
+DEF actor_damaged_by_id    = 256 + 1
+DEF actor_knockback_timer  = 256 + 2
+DEF actor_knockback_sign_x = 256 + 3
+DEF actor_knockback_sign_y = 256 + 3
 
 ; Actor states
 DEF ACTOR_STATE_NORMAL = 0

@@ -85,6 +85,7 @@ ActorNothing::
 
 ActorSneaker::
 	call EnemyCommon
+	jr nc, .DrawOnly
 
 	ldh a, [PlayerPYH]
 	ld hl, actor_pyh
@@ -120,11 +121,13 @@ ActorSneaker::
 		dec l
 		cp [hl]
 		jr z, .DoneMoveX
-		jr nc, .GoRight
+		jr nc, .GoRightNoFlip
+		jr .GoLeftNoFlip
 	.GoLeft:
 		ld a, [de]
 		or 128
 		ld [de], a
+	.GoLeftNoFlip:
 		ld a, -$08
 		call ActorWalkXAndBump
 		jr .DoneMoveX
@@ -132,10 +135,12 @@ ActorSneaker::
 		ld a, [de]
 		and 127
 		ld [de], a 
+	.GoRightNoFlip:
 		ld a, $08
 		call ActorWalkXAndBump
 	.DoneMoveX:
 
+.DrawOnly:
 	;ld a, $34
 	ldh a, [framecount]
 	rrca
@@ -154,20 +159,20 @@ ActorKitty::
 	jp DrawActor_16x16
 
 ActorPaintProjectile::
-	ld hl, actor_vyl
+	ld hl, actor_vxl
 	add hl, de
 
 	; Add X and Y speed to the position
 	push de
-	ld a, [hl+] ; Y
-	ld c, a
-	sex
-	ld b, a
-
 	ld a, [hl+] ; X
 	ld e, a
 	sex
 	ld d, a
+
+	ld a, [hl+] ; Y
+	ld c, a
+	sex
+	ld b, a
 
 	ld a, [hl] ; actor_pyl
 	add c
@@ -223,24 +228,231 @@ ActorPaintProjectile::
 	call DrawActor_8x16_YOffset
 	ret
 
+ActorHurtStarProjectile::
+	call ActorApplyVelocity
 
+	ld hl, actor_timer
+	add hl, de
+	ld a, [hl]
+	inc [hl]
+	cp 24
+	jr nz, :+
+		xor a
+		ld [de], a
+		ret
+	:
+	ld hl, PaintOffset
+	add_hl_a
+	ld c, [hl]
+
+	ld a, $22
+	ld b, 0
+	call DrawActor_8x16_YOffset
+	ret
+
+ActorPoof::
+	ld hl, actor_timer
+	add hl, de
+	ld a, [hl]
+	inc a
+	ld [hl], a
+	cp 4*3
+	jr nz, :+
+		xor a
+		ld [de], a
+		ret
+	:
+
+	ld a, [hl]
+	and %1100
+	add $34
+	ld b, 0
+	jp DrawActor_16x16
+
+;height = 0
+;speed = -10
+;while True:
+;	print(height)
+;	height += speed // 4
+;	speed += 1
+;	if height > 0:
+;		break
 PaintOffset:
 def PaintCollisionYOffset equ 6
 def PaintOffsetOffset equ 4
 	db 0+PaintOffsetOffset, -3+PaintOffsetOffset, -6+PaintOffsetOffset, -8+PaintOffsetOffset, -10+PaintOffsetOffset, -12+PaintOffsetOffset, -14+PaintOffsetOffset, -15+PaintOffsetOffset, -16+PaintOffsetOffset, -17+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -17+PaintOffsetOffset, -16+PaintOffsetOffset, -15+PaintOffsetOffset, -14+PaintOffsetOffset, -12+PaintOffsetOffset, -10+PaintOffsetOffset, -8+PaintOffsetOffset, -6+PaintOffsetOffset, -3+PaintOffsetOffset, 0+PaintOffsetOffset
 
 EnemyCommon:
-	call CollideWithProjectiles
-	jr nc, :+
-		xor a
-		ld [de], a
-		pop hl
-		ret
-	:
-
 	ld hl, EnemyCount
 	inc [hl]
+
+	call CollideWithProjectiles
+	jr nc, .NoCollide
+		switch_hl_to_field actor_type, actor_vxl
+		ld a, [hl+]
+		ld b, a ; B = X Speed
+		ld a, [hl]
+		ld c, a ; C = Y Speed
+		switch_hl_to_field actor_vyl, actor_var1
+		ld a, [hl]
+		ldh [temp1], a
+
+		ld hl, actor_health
+		add hl, de
+		ld a, [hl] ; HL: actor_health
+		sub $08
+		ld [hl+], a
+		jr z, .OutOfHealth
+		jr nc, :+
+		.OutOfHealth:
+			call ActorBecomePoof
+
+			pop hl
+			ret
+		:
+		ld hl, actor_damaged_by_id
+		add hl, de
+		ldh a, [temp1]
+		ld [hl+], a ; HL: actor_damaged_by_id
+		ld a, 45 ; Timer amount
+		ld [hl+], a ; HL: actor_knockback_timer
+		ld a, b
+		ld [hl+], a ; HL: actor_knockback_sign_x
+		ld a, c
+		ld [hl],  a ; HL: actor_knockback_sign_y
+
+		; Create damage particle
+		ld hl, actor_pyl
+		add hl, de
+		ld a, [hl+] ; HL: actor_pyl
+		ldh [temp1], a
+		ld a, [hl+] ; HL: actor_pyh
+		ldh [temp2], a
+		ld a, [hl+] ; HL: actor_pxl
+		ldh [temp3], a
+		ld a, [hl+] ; HL: actor_pxh
+		ldh [temp4], a
+		call FindFreeActorSlot
+		jr nc, .NoFreeActorSlot
+			call ClearActorHL
+			ld a, ActorType_HurtStarProjectile
+			ld [hl], a ; HL: actor_type
+
+			switch_hl_to_field actor_type, actor_vxl
+			call RandomByte
+			and 31
+			sub 16
+			ld [hl+], a     ; actor_vxl
+			call RandomByte
+			and 31
+			sub 16
+			ld a, 1
+			ld [hl+], a    ; actor_vyl
+			ldh a, [temp1]
+			ld [hl+], a    ; actor_pyl
+			ldh a, [temp2]
+			ld [hl+], a    ; actor_pyh
+			ldh a, [temp3]
+			ld [hl+], a    ; actor_pxl
+			ldh a, [temp4]
+			ld [hl], a     ; actor_pxh
+		.NoFreeActorSlot:
+	.NoCollide:
+
+	ld hl, actor_knockback_timer
+	add hl, de
+	ld a, [hl]
+	or a
+	jr z, .NoKnockback
+		dec [hl]
+		ld a, [hl+] ; HL: actor_knockback_timer
+		ldh [temp1], a
+		ld a, [hl+] ; HL: actor_knockback_sign_x
+		ldh [temp2], a
+		ld a, [hl]  ; HL: actor_knockback_sign_y
+
+		or a
+		jr z, .SkipKnockY
+		cp -16
+		jr z, .KnockNegativeY
+		.KnockPositiveY:
+			ldh a, [temp1]
+			call ActorWalkYAndBump
+			jr .DidKnockY
+		.KnockNegativeY:
+			ldh a, [temp1]
+			cpl
+			inc a
+			call ActorWalkYAndBump
+		.DidKnockY:
+			jr nc, .SkipKnockY
+				ld hl, actor_knockback_sign_y
+				add hl, de
+				ld a, [hl]
+				cpl
+				inc a
+				ld [hl-], a
+				dec l
+				ld a, [hl] ; HL: actor_knockback_timer
+				cp 15
+				jr c, :+
+					ld [hl], 15 ; HL: actor_knockback_timer
+				:
+		.SkipKnockY:
+
+		ldh a, [temp2]
+		or a
+		jr z, .SkipKnockX
+		cp -16
+		jr z, .KnockNegativeX
+		.KnockPositiveX:
+			ldh a, [temp1]
+			call ActorWalkXAndBump
+			jr .DidKnockX
+		.KnockNegativeX:
+			ldh a, [temp1]
+			cpl
+			inc a
+			call ActorWalkXAndBump
+		.DidKnockX:
+			jr nc, .SkipKnockX
+				ld hl, actor_knockback_sign_x
+				add hl, de
+				ld a, [hl]
+				cpl
+				inc a
+				ld [hl-], a
+
+				ld a, [hl] ; HL: actor_knockback_timer
+				cp 15
+				jr c, :+
+					ld [hl], 15 ; HL: actor_knockback_timer
+				:
+		.SkipKnockX:
+
+		or a ; Override normal behavior
+		ret
+	.NoKnockback:
+
+	; Continue
+	scf
 	ret
+
+;px = 0
+;kx = 6
+;L = []
+;while True:
+;	old_px = px
+;	px += kx
+;	int_old_px = round(old_px*16)
+;	int_new_px = round(px*16)
+;	L.append(int_new_px - int_old_px) 
+;	kx *= 0.90
+;	if kx < 0.05:
+;		break
+;L.reverse()
+KnockbackTable:
+	db 0, 1, 1, 1, 2, 1, 2, 2, 1, 3, 2, 3, 3, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 10, 10, 12, 13, 14, 16, 18, 20, 22, 24, 27, 30, 34, 37, 41, 46, 51, 57, 63, 70, 78, 86, 96
 
 CollideWithProjectiles:
 	; Check for collision with player projectiles
@@ -368,6 +580,44 @@ CollideWithProjectiles:
 ; | Actor shared code
 ; '----------------------------------------------------------------------------
 
+ActorApplyVelocity:
+	ld hl, actor_vxl
+	add hl, de
+	ld a, [hl+] ; HL: actor_vxl
+	ld b, a
+	sex
+	ldh [temp1], a
+	ld a, [hl+] ; HL: actor_vyl
+	ld c, a
+	sex
+	ldh [temp2], a
+
+	ld a, [hl]  ; HL: actor_pyl
+	add b
+	ld [hl+], a
+	ldh a, [temp1]
+	adc [hl]    ; HL: actor_pyh
+	ld [hl+], a
+
+	ld a, [hl]  ; HL: actor_pxl
+	add c
+	ld [hl+], a
+	ldh a, [temp2]
+	adc [hl]    ; HL: actor_pxh
+	ld [hl], a
+	ret
+
+ActorBecomePoof:
+	ld a, ActorType_Poof
+	ld [de], a ; actor_type
+	inc e
+	inc e
+	xor a
+	ld [de], a ; actor_timer
+	dec e
+	dec e
+	ret
+
 ActorWalkY:
 	ld c, a
 	sex
@@ -418,6 +668,7 @@ ActorWalkYAndBump:
 	ld a, [hl]
 	adc b
 	ld [hl], a
+	or a
 	ret
 
 ActorWalkXAndBump:
@@ -446,6 +697,7 @@ ActorWalkXAndBump:
 	ld a, [hl]
 	adc b
 	ld [hl], a
+	or a
 	ret
 
 ; ---------------------------------------------------------

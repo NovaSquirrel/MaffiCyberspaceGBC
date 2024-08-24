@@ -9,3 +9,10 @@ run ActorKitty
 
 +PaintProjectile
 run ActorPaintProjectile
+
++HurtStarProjectile
+run ActorHurtStarProjectile
+
++Poof
+run ActorPoof
+

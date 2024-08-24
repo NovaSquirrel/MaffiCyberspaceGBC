@@ -528,6 +528,34 @@ FindFreeActorSlot::
 	scf ; True
 	ret
 
+ClearActorHL::
+	call .Clear16
+	inc h
+	call .Clear16
+	dec h
+	ret
+.Clear16:
+	push hl
+	xor a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
+	pop hl
+	ret
+
 ; -----------------------------------------------
 ; LCD copy routines, by ISSOtm
 
