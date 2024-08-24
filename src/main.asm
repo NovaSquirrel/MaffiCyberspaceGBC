@@ -19,6 +19,7 @@ include "include/macros.inc"
 include "include/defines.inc"
 include "include/hardware.inc/hardware.inc"
 
+include "res/block_enum.inc"
 include "res/actor_enum.inc"
 
 SECTION "MainLoop", ROM0
@@ -36,25 +37,25 @@ StartLevel::
 	call memclear
 
 	; Test enemy
-	ld a, ActorType_Sneaker
-	ld [ActorData], a
-	ld a, 36
-	ld [ActorData + actor_pyh], a
-	ld [ActorData + actor_pxh], a
-	ld a, $80
-	ld [ActorData + actor_pyl], a
-	ld [ActorData + actor_pxl], a
-	ld [ActorData + actor_pyl + ACTOR_SIZE], a
-	ld [ActorData + actor_pxl + ACTOR_SIZE], a
-	ld a, $10
-	ld [ActorData + actor_health], a
-	ld [ActorData + actor_health + ACTOR_SIZE], a
+	;ld a, ActorType_EnemySpawning
+	;ld [ActorData], a
+	;ld a, 36
+	;ld [ActorData + actor_pyh], a
+	;ld [ActorData + actor_pxh], a
+	;ld a, $80
+	;ld [ActorData + actor_pyl], a
+	;ld [ActorData + actor_pxl], a
+	;ld [ActorData + actor_pyl + ACTOR_SIZE], a
+	;ld [ActorData + actor_pxl + ACTOR_SIZE], a
+	;ld a, $10
+	;ld [ActorData + actor_health], a
+	;ld [ActorData + actor_health + ACTOR_SIZE], a
 
-	ld a, ActorType_Sneaker
-	ld [ActorData + ACTOR_SIZE], a
-	ld a, 28
-	ld [ActorData + actor_pyh + ACTOR_SIZE], a
-	ld [ActorData + actor_pxh + ACTOR_SIZE], a
+	;ld a, ActorType_EnemySpawning
+	;ld [ActorData + ACTOR_SIZE], a
+	;ld a, 28
+	;ld [ActorData + actor_pyh + ACTOR_SIZE], a
+	;ld [ActorData + actor_pxh + ACTOR_SIZE], a
 
 	ld a, 7
 	ldh [rWX], a ; X position + 7, so 7 is writing 0
@@ -279,7 +280,50 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	ldh a, [OAMWrite]
 	ld [PreviousOAMWrite], a
 
+
+	ld a, [framecount]
+	and 63
+	jr nz, .NoSpawnEnemy
+		call SpawnEnemy
+	.NoSpawnEnemy:
+
+	; Randomly swap two actors to implement flickering
+	call RandomByte
+	and $f0
+	ld h, HIGH(ActorData)
+	ld l, a
+	ld a, [framecount]
+	swap a
+	and $f0
+	ld d, HIGH(ActorData)
+	ld e, a
+	push hl
+	push de
+	call SwapSixteenBytes
+	pop de
+	pop hl
+	inc h
+	inc d
+	call SwapSixteenBytes
+
 	jp forever
+
+; Swaps sixteen bytes starting from HL and DE
+SwapSixteenBytes:
+	rept 15
+	ld b, [hl]
+	ld a, [de]
+	ld [hl+], a
+	ld a, b
+	ld [de], a
+	inc e
+	endr
+	ld b, [hl]
+	ld a, [de]
+	ld [hl], a
+	ld a, b
+	ld [de], a
+	ret
 
 ; .----------------------------------------------------------------------------
 ; | DMG-specific vblank tasks
@@ -434,4 +478,86 @@ WriteOneTile:
 	endr
 	ld a, [hl]
 	ld [de], a
+	ret
+
+; .----------------------------------------------------------------------------
+; | Enemy spawning
+; '----------------------------------------------------------------------------
+;all_tiles = set()
+;for radius in range(80, 100):
+;	for angle_i in range(360):
+;		angle = angle_i / 360.0 * 2 * math.pi
+;		x = math.cos(angle) * radius;
+;		y = math.sin(angle) * radius;
+;		all_tiles.add((x//16, y//16))
+;print(", ".join("%d,%d" % pair for pair in all_tiles))
+;print(len(all_tiles))
+EnemySpawnLocations: ; There's 88 entries here
+	db 4,0, -5,-3, 5,1, -6,1, 1,-6, 0,5, 4,2, 5,3, -6,3, 2,-5, 2,4, -4,-6, -4,3, 4,-5, 5,-4, -6,-4, -5,4, -4,-4, -1,-7, -2,-7, -4,5, -6,-1, 5,-1, -6,-2, 5,-2, -3,-6, 0,-7, -2,-5, -1,-5, -1,4, -2,4, 3,-6, 3,3, 5,0, -6,0, 0,-5, -3,5, 1,5, 6,1, -7,1, 3,-4, 3,5, 5,2, -6,2, -5,1, 4,4, 4,-3, -5,3, -4,-5, -4,4, -6,-3, 5,-3, -5,-4, 1,-7, 0,4, -7,-1, -7,-2, -1,5, -1,6, -2,6, 4,1, -5,-2, -5,-1, -3,-5, -3,4, 1,-5, 2,-6, 1,4, 0,6, -7,0, 3,-5, 3,4, 4,3, -5,0, 1,6, 2,5, 4,-4, -5,2, 6,-1, 6,-2, -1,-6, -2,-6, 4,-2, 4,-1, -5,-5, 0,-6, 6,0, -2,5
+
+SpawnEnemy:
+	ld a, [EnemyCount]
+	cp 12
+	ret nc
+	ld b, 20 ; How many tries to do
+.TrySpawnEnemy:
+:	call RandomByte
+	and 127
+	cp 88
+	jr nc, :-
+	add a
+	ld hl, EnemySpawnLocations
+	add_hl_a
+
+	ldh a, [PlayerPXH]
+	add [hl]
+	ld d, a
+	ldh [temp1], a
+	cp 64
+	jr nc, .FailSpawnEnemy
+
+	inc hl
+
+	ldh a, [PlayerPYH]
+	add [hl]
+	ld e, a
+	ldh [temp2], a
+	cp 64
+	jr nc, .FailSpawnEnemy
+
+	ldh a, [temp1] ; X
+	ld l, a
+	ldh a, [temp2] ; Y
+	ld h, a
+	call MapPointerLH_XY
+	ld a, [hl]
+	cp BlockType_Floor
+	jr nz, .FailSpawnEnemy
+
+	call FindFreeActorSlot
+	ret nc ; Oops there's no room for an enemy anyway
+	call ClearActorHL
+
+	ld a, ActorType_EnemySpawning
+	ld [hl], a ; HL: actor_type
+	switch_hl_to_field actor_type, actor_pyl
+	ld [hl], $80   ; actor_pyl
+	inc l
+	ldh a, [temp2] ; actor_plh
+	ld [hl+], a
+	ld [hl], $80   ; actor_pxl
+	inc l
+	ldh a, [temp1]
+	ld [hl], a     ; actor_pyh
+
+	ld b,b
+	inc h
+	ld a, l
+	and %11110000 ; Move to actor_health
+	ld l, a
+	ld [hl], $10
+	ret
+.FailSpawnEnemy:
+	dec b
+	jr nz, .TrySpawnEnemy
 	ret

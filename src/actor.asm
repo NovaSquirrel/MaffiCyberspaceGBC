@@ -253,9 +253,8 @@ ActorHurtStarProjectile::
 ActorPoof::
 	ld hl, actor_timer
 	add hl, de
+	inc [hl]
 	ld a, [hl]
-	inc a
-	ld [hl], a
 	cp 4*3
 	jr nz, :+
 		xor a
@@ -268,6 +267,22 @@ ActorPoof::
 	add $34
 	ld b, 0
 	jp DrawActor_16x16
+
+ActorEnemySpawning::
+	ld hl, actor_timer
+	add hl, de
+	inc [hl]
+	ld a, [hl]
+	cp 60
+	jr nz, :+
+		ld a, ActorType_Sneaker
+		ld [de], a
+		ret
+	:
+
+	ld a, $1E
+	ld b, 0
+	jp DrawActor_16x16_Symmetrical
 
 ;height = 0
 ;speed = -10
@@ -388,12 +403,13 @@ EnemyCommon:
 			jr nc, .SkipKnockY
 				ld hl, actor_knockback_sign_y
 				add hl, de
-				ld a, [hl]
+				ld a, [hl]   ; HL: actor_knockback_sign_y
 				cpl
 				inc a
-				ld [hl-], a
+				ld [hl-], a  ; HL: actor_knockback_sign_y
 				dec l
-				ld a, [hl] ; HL: actor_knockback_timer
+
+				ld a, [hl]   ; HL: actor_knockback_timer
 				cp 15
 				jr c, :+
 					ld [hl], 15 ; HL: actor_knockback_timer
@@ -418,12 +434,12 @@ EnemyCommon:
 			jr nc, .SkipKnockX
 				ld hl, actor_knockback_sign_x
 				add hl, de
-				ld a, [hl]
+				ld a, [hl]  ; HL: actor_knockback_sign_x
 				cpl
 				inc a
-				ld [hl-], a
+				ld [hl-], a ; HL: actor_knockback_sign_x
 
-				ld a, [hl] ; HL: actor_knockback_timer
+				ld a, [hl]  ; HL: actor_knockback_timer
 				cp 15
 				jr c, :+
 					ld [hl], 15 ; HL: actor_knockback_timer
@@ -835,6 +851,93 @@ DrawActor_16x16:
 ; --------------------------------
 	pop de ; restore "this"
 
+	ld a, l
+	ldh [OAMWrite], a
+	ret
+
+; ---------------------------------------------------------
+
+; A = Sprite tile to draw
+; B = Attributes
+; Draws actor DE
+DrawActor_16x16_Symmetrical:
+	; temp1 = Sprite tile (left half)
+	; temp2 = Attributes
+
+	; Store the tile numbers and attributes to use
+	ldh [temp1], a
+	ld a, b
+	ldh [temp2], a ; attributes
+
+; --------------------------------
+; Convert X and Y positions
+	ld hl, actor_pyl
+	add hl, de
+	push de ; push "this" because DE will get used for screen coordinates
+
+	; ---------------------------------
+	; Get Y position first
+	ldh a, [CameraY+0]
+	ld c, a
+	ldh a, [CameraY+1]
+	ld b, a
+	
+	ld a, [hl+] ; HL: PYL --> PYH
+	sub c
+	ld c, a
+	ld a, [hl+] ; HL: PYH --> PXL
+	call SharedCameraSubtractCode_Bounded
+	jr nc, .out_of_bounds
+	;add 16-16
+	ld e, a ; E = screen Y position
+
+	; Get X position next
+	ldh a, [CameraX+0]
+	ld c, a
+	ldh a, [CameraX+1]
+	ld b, a
+
+	ld a, [hl+] ; HL: PXL --> PXH
+	sub c
+	ld c, a
+	ld a, [hl]  ; HL: PXH
+	call SharedCameraSubtractCode_Bounded
+	jr c, :+
+	.out_of_bounds:
+		pop de
+		ret
+	:
+	;add 8-8
+	ld d, a ; D = screen X position
+	; ---------------------------------
+
+	ld h, high(OamBuffer)
+	ldh a, [OAMWrite]
+	ld l, a
+	; --------------------------------
+
+	ld a, e
+	ld [hl+], a ; Y position
+	ld a, d
+	ld [hl+], a ; X position
+	ldh a, [temp1]
+	ld [hl+],a ; set tile number
+	ldh a, [temp2]
+	ld [hl+],a ; set attribute
+
+	ld a, e
+	ld [hl+], a ; Y position
+	ld a, d
+	add 8
+	ld [hl+], a ; X position
+	ldh a, [temp1]
+	ld [hl+],a ; set tile number
+	ldh a, [temp2]
+	or OAMF_XFLIP
+	ld [hl+],a ; set attribute
+
+	; --------------------------------
+	pop de ; restore "this"
 	ld a, l
 	ldh [OAMWrite], a
 	ret

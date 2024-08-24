@@ -78,7 +78,7 @@ DEF actor_health           = 256 + 0
 DEF actor_damaged_by_id    = 256 + 1
 DEF actor_knockback_timer  = 256 + 2
 DEF actor_knockback_sign_x = 256 + 3
-DEF actor_knockback_sign_y = 256 + 3
+DEF actor_knockback_sign_y = 256 + 4
 
 ; Actor states
 DEF ACTOR_STATE_NORMAL = 0
