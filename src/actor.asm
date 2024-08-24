@@ -298,6 +298,41 @@ def PaintOffsetOffset equ 4
 	db 0+PaintOffsetOffset, -3+PaintOffsetOffset, -6+PaintOffsetOffset, -8+PaintOffsetOffset, -10+PaintOffsetOffset, -12+PaintOffsetOffset, -14+PaintOffsetOffset, -15+PaintOffsetOffset, -16+PaintOffsetOffset, -17+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -17+PaintOffsetOffset, -16+PaintOffsetOffset, -15+PaintOffsetOffset, -14+PaintOffsetOffset, -12+PaintOffsetOffset, -10+PaintOffsetOffset, -8+PaintOffsetOffset, -6+PaintOffsetOffset, -3+PaintOffsetOffset, 0+PaintOffsetOffset
 
 EnemyCommon:
+	; Too far horizontally?
+	ld hl, actor_pxh
+	add hl, de
+	ldh a, [PlayerPXH]
+	ld b, a
+	ld a, [hl-]
+	sub b
+	bit 7, a
+	jr z, :+
+		cpl
+		inc a
+	:
+	cp 12
+	jr c, :+
+	.TooFar:
+		xor a
+		ld [de], a
+		pop hl
+		ret
+	:
+	dec l
+	ldh a, [PlayerPYH]
+	ld b, a
+	ld a, [hl]
+	sub b
+	bit 7, a
+	jr z, :+
+		cpl
+		inc a
+	:
+	cp 12
+	jr nc, .TooFar
+
+	; ----
+
 	ld hl, EnemyCount
 	inc [hl]
 
