@@ -99,7 +99,7 @@ MACRO get_block_flags
 	ld a, [hl]
 ENDM
 
-; This macro is meant for whe HL is already pointing at one item within an actor,
+; This macro is meant for when HL is already pointing at one item within an actor,
 ; and it will switch from one field to another. One cycle faster than the "add hl, de" way.
 MACRO switch_hl_to_field
 	if \2 - \1 == 1

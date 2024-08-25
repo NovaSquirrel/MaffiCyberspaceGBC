@@ -550,7 +550,6 @@ SpawnEnemy:
 	ldh a, [temp1]
 	ld [hl], a     ; actor_pyh
 
-	ld b,b
 	inc h
 	ld a, l
 	and %11110000 ; Move to actor_health

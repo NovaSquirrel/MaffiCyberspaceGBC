@@ -164,12 +164,12 @@ ActorPaintProjectile::
 
 	; Add X and Y speed to the position
 	push de
-	ld a, [hl+] ; X
+	ld a, [hl+] ; actor_vxl
 	ld e, a
 	sex
 	ld d, a
 
-	ld a, [hl+] ; Y
+	ld a, [hl+] ; actor_vyl
 	ld c, a
 	sex
 	ld b, a
@@ -225,8 +225,7 @@ ActorPaintProjectile::
 	or PALETTE_PLAYER
 	ld b, a
 	ld a, $2C
-	call DrawActor_8x16_YOffset
-	ret
+	jp DrawActor_8x16_YOffset
 
 ActorHurtStarProjectile::
 	call ActorApplyVelocity
@@ -247,8 +246,7 @@ ActorHurtStarProjectile::
 
 	ld a, $22
 	ld b, 0
-	call DrawActor_8x16_YOffset
-	ret
+	jp DrawActor_8x16_YOffset
 
 ActorPoof::
 	ld hl, actor_timer
@@ -298,6 +296,7 @@ def PaintOffsetOffset equ 4
 	db 0+PaintOffsetOffset, -3+PaintOffsetOffset, -6+PaintOffsetOffset, -8+PaintOffsetOffset, -10+PaintOffsetOffset, -12+PaintOffsetOffset, -14+PaintOffsetOffset, -15+PaintOffsetOffset, -16+PaintOffsetOffset, -17+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -17+PaintOffsetOffset, -16+PaintOffsetOffset, -15+PaintOffsetOffset, -14+PaintOffsetOffset, -12+PaintOffsetOffset, -10+PaintOffsetOffset, -8+PaintOffsetOffset, -6+PaintOffsetOffset, -3+PaintOffsetOffset, 0+PaintOffsetOffset
 
 EnemyCommon:
+	; Remove the enemy if they're too far off the side of the screen
 	; Too far horizontally?
 	ld hl, actor_pxh
 	add hl, de
@@ -305,12 +304,12 @@ EnemyCommon:
 	ld b, a
 	ld a, [hl-]
 	sub b
-	bit 7, a
-	jr z, :+
+	add a ; Check the sign bit
+	jr nc, :+
 		cpl
 		inc a
 	:
-	cp 12
+	cp 24 ; 12, but doubled due to the "add a" sign check
 	jr c, :+
 	.TooFar:
 		xor a
@@ -323,12 +322,12 @@ EnemyCommon:
 	ld b, a
 	ld a, [hl]
 	sub b
-	bit 7, a
-	jr z, :+
+	add a ; Check the sign bit
+	jr nc, :+
 		cpl
 		inc a
 	:
-	cp 12
+	cp 24 ; 12, but doubled due to the "add a" sign check
 	jr nc, .TooFar
 
 	; ----
@@ -409,6 +408,9 @@ EnemyCommon:
 		.NoFreeActorSlot:
 	.NoCollide:
 
+	call CollideWithPlayer
+
+	; Apply knockback if there is currently knockback
 	ld hl, actor_knockback_timer
 	add hl, de
 	ld a, [hl]
@@ -485,7 +487,7 @@ EnemyCommon:
 		ret
 	.NoKnockback:
 
-	; Continue
+	; Signal that the enemy code should continue as normal
 	scf
 	ret
 
@@ -504,6 +506,110 @@ EnemyCommon:
 ;L.reverse()
 KnockbackTable:
 	db 0, 1, 1, 1, 2, 1, 2, 2, 1, 3, 2, 3, 3, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 10, 10, 12, 13, 14, 16, 18, 20, 22, 24, 27, 30, 34, 37, 41, 46, 51, 57, 63, 70, 78, 86, 96
+
+CollideWithPlayer:
+	ld hl, actor_pyh
+	add hl, de
+
+	; Attempt to exit early
+	ldh a, [PlayerPYH]
+	sub [hl] ; actor_pyh
+	add a    ; Check to see if it's negative
+	jr nc, :+
+		cpl
+		inc a
+	:
+	cp 4 ; Actually 2, doubled because of the "add a"
+	ret nc
+	switch_hl_to_field actor_pyh, actor_pxh
+	ldh a, [PlayerPXH]
+	sub [hl] ; actor_pxh
+	add a    ; Check to see if it's negative
+	jr nc, :+
+		cpl
+		inc a
+	:
+	cp 4 ; Actually 2, doubled because of the "add a"
+	ret nc
+
+	; .------------------------------------------------
+	; | Check X coordinates
+	; '------------------------------------------------
+
+	; HL = actor_pxh
+	switch_hl_to_field actor_pxh, actor_pxl
+	ldh a, [PlayerPXL] ; pxl
+	ld c, a
+	ld a, [hl+] ; HL: actor_pxl
+	sub c
+	ld c, a
+	ldh a, [PlayerPXH] ; pxh
+	ld b, a
+	ld a, [hl-] ; HL: actor_pxh
+	sbc b
+	ld b, a
+
+	sla c ; BC *= 2
+	rl b
+	jr nc, :+ ; Flip the sign if it's negative
+		xor a
+		sub c
+		ld c, a
+		ld a, 0
+		sbc b
+		ld b, a
+	:
+
+	; BC should be < (width1+width2)
+	; so BC < ((8*16)+(8*16)) or 256
+	; so B == 0
+	ld a, b
+	or a
+	jr nz, .NoCollision
+	bit 7, c
+	jr nz, .NoCollision
+
+	; .------------------------------------------------
+	; | Check Y coordinates
+	; '------------------------------------------------
+
+	switch_hl_to_field actor_pxl, actor_pyl
+
+	ldh a, [PlayerPYL] ; pyl
+	ld c, a
+	ld a, [hl+] ; HL: actor_pyl
+	sub c
+	ld c, a
+	ldh a, [PlayerPYH] ; pyh
+	ld b, a
+	ld a, [hl+] ; HL: actor_pyh
+	sbc b
+	ld b, a
+
+	sla c ; BC *= 2
+	rl b
+	jr nc, :+ ; Flip the sign if it's negative
+		xor a
+		sub c
+		ld c, a
+		ld a, 0
+		sbc b
+		ld b, a
+	:
+
+	; BC should be < (height1+height2)
+	; so BC < ((8*16)+(8*16)) or 256
+	; so B == 0
+	ld a, b
+	or a
+	ret nz
+
+	ld b,b
+	scf
+	ret
+.NoCollision:
+	or a
+	ret
 
 CollideWithProjectiles:
 	; Check for collision with player projectiles
@@ -537,11 +643,34 @@ CollideWithProjectiles:
 		cp [hl]
 		jr z, .PopNext
 
+		; Try to exit early; hopefully this works?
+		switch_hl_to_field actor_var1, actor_pyh
+		ldh a, [temp2]
+		sub [hl] ; actor_pyh
+		add a    ; Check to see if it's negative
+		jr nc, :+
+			cpl
+			inc a
+		:
+		cp 4 ; Actually 2, doubled because of the "add a"
+		jr nc, .PopNext
+		inc l
+		inc l
+		ldh a, [temp4]
+		sub [hl] ; actor_pxh
+		add a    ; Check to see if it's negative
+		jr nc, :+
+			cpl
+			inc a
+		:
+		cp 4 ; Actually 2, doubled because of the "add a"
+		jr nc, .PopNext
+
 		; .------------------------------------------------
 		; | Check Y coordinates
 		; '------------------------------------------------
 
-		switch_hl_to_field actor_var1, actor_pyl
+		switch_hl_to_field actor_pxh, actor_pyl
 	
 		ldh a, [temp1] ; pyl
 		ld c, a
