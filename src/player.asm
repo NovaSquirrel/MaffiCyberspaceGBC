@@ -256,11 +256,56 @@ RunPlayer::
 		ld de, PaintLineCoordinates
 		add_de_a
 		ld b, 5
+		ld hl, PlayerProjectiles ; Start making projectiles from the start
 	:	push bc
-		call MakeFlickParticle
+		; Make flick particle
+		xor a
+		ld [hl], ActorType_PaintProjectile
+		inc l
+		ld [hl+], a ; actor_state
+		ld [hl+], a ; actor_timer
+
+		ldh a, [temp1]
+		ld [hl+], a ; actor_vxl
+		ldh a, [temp2]
+		ld [hl+], a ; actor_vyl
+
+		ldh a, [PlayerPYL]
+		ld c, a
+		ldh a, [PlayerPYH]
+		ld b, a
+		ld a, [de]
+		inc de
+		add c
+		ld [hl+], a ; actor_pyl
+		ld a, [de]
+		inc de
+		adc b
+		ld [hl+], a ; actor_pyh
+
+		ldh a, [PlayerPXL]
+		ld c, a
+		ldh a, [PlayerPXH]
+		ld b, a
+		ld a, [de]
+		inc de
+		add c
+		ld [hl+], a ; actor_pxl
+		ld a, [de]
+		inc de
+		adc b
+		ld [hl+], a ; actor_pxh
+
+		ld a, [PaintShotID]
+		ld [hl+], a ; actor_var1
 		pop bc
 		jr nc, :+
 		ld [hl], b ; HL points to actor_var2, so the first paint projectile will have a 5 here
+
+		ld a, l    ; Move to the next actor
+		add (actor_type+ACTOR_SIZE)-actor_var2
+		ld l, a
+	
 		dec b
 		jr nz, :-
 	:
@@ -571,67 +616,6 @@ SharedCameraSubtractCode:
 	enum_elem PLAYER_FRAME_U
 	enum_elem PLAYER_FRAME_U2
 	enum_elem PLAYER_FRAME_U3
-
-; ---------------------------------------------------------
-
-MakeFlickParticle:
-	; Find a free slot
-	ld hl, PlayerProjectiles
-	ld bc, ACTOR_SIZE
-.FindFree:
-	ld a, [hl]
-	or a
-	jr z, .Found
-	add hl, bc
-	ld a, l
-	cp ACTOR_SIZE * PLAYER_PROJECTILE_COUNT
-	ret nc
-	jr .FindFree
-.Found:
-
-	xor a
-	ld [hl], ActorType_PaintProjectile
-	inc l
-	ld [hl+], a ; actor_state
-	ld [hl+], a ; actor_timer
-
-	ldh a, [temp1]
-	ld [hl+], a ; actor_vxl
-	ldh a, [temp2]
-	ld [hl+], a ; actor_vyl
-
-	ldh a, [PlayerPYL]
-	ld c, a
-	ldh a, [PlayerPYH]
-	ld b, a
-	ld a, [de]
-	inc de
-	add c
-	ld [hl+], a ; actor_pyl
-	ld a, [de]
-	inc de
-	adc b
-	ld [hl+], a ; actor_pyh
-
-	ldh a, [PlayerPXL]
-	ld c, a
-	ldh a, [PlayerPXH]
-	ld b, a
-	ld a, [de]
-	inc de
-	add c
-	ld [hl+], a ; actor_pxl
-	ld a, [de]
-	inc de
-	adc b
-	ld [hl+], a ; actor_pxh
-
-	ld a, [PaintShotID]
-	ld [hl+], a ; actor_var1
-	; Returns with HL pointing at actor_var2
-
-	scf
-	ret
 
 ; ---------------------------------------------------------
 

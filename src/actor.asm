@@ -234,7 +234,8 @@ ActorPaintProjectile::
 	or PALETTE_PLAYER
 	ld b, a
 	ld a, $2C
-	jp DrawActor_8x16_YOffset
+	call DrawPaintProjectile
+	ret
 
 ActorHurtStarProjectile::
 	call ActorApplyVelocity
@@ -936,7 +937,6 @@ DrawActor_16x16:
 	ld a, [de] ; Get direction bit
 	rla
 	jr nc, .no_horiz_flip
-	hswap [temp1], [temp2]
 	ldh a, [temp1]
 	ldh [temp2], a
 	add 2
@@ -1285,6 +1285,8 @@ DrawPaintProjectile:
 	ldh a, [temp2]
 	ld c, a
 	ret
+
+
 ; Input: B (camera position high byte), A (entity position high byte),
 ;        C (entity position low byte; should already have subtracted camera position low byte)
 ; Output: A (pixel position), Carry set if within bounds & clear if outside bounds

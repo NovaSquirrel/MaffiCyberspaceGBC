@@ -26,8 +26,8 @@ include "res/block_enum.inc"
 ;	print("; %d, %d ----------------------------------" % (PlayerShootX, PlayerShootY))
 ;
 ;	for i in (2, 1, 3, 0, 4):
-;		x = PlayerShootX * 8
-;		y = PlayerShootY * 8
+;		x = 0
+;		y = 0
 ;
 ;		is_diagonal = PlayerShootX != 0 and PlayerShootY != 0
 ;		scale = 6 if is_diagonal else 8
@@ -60,10 +60,8 @@ SECTION FRAGMENT "ActorCode", ROMX
 DrawPaintLine0:
 	; 1, 0 ----------------------------------
 	ld a, e
-	add 0
 	ld [hl+], a ; Y position
 	ld a, d
-	add 8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -74,7 +72,6 @@ DrawPaintLine0:
 	add 8
 	ld [hl+], a ; Y position
 	ld a, d
-	add 8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -85,7 +82,6 @@ DrawPaintLine0:
 	add -8
 	ld [hl+], a ; Y position
 	ld a, d
-	add 8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -96,7 +92,6 @@ DrawPaintLine0:
 	add 16
 	ld [hl+], a ; Y position
 	ld a, d
-	add 8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -107,7 +102,6 @@ DrawPaintLine0:
 	add -16
 	ld [hl+], a ; Y position
 	ld a, d
-	add 8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -122,10 +116,8 @@ DrawPaintLine0:
 DrawPaintLine1:
 	; 1, 1 ----------------------------------
 	ld a, e
-	add 8
 	ld [hl+], a ; Y position
 	ld a, d
-	add 8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -133,10 +125,10 @@ DrawPaintLine1:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 14
+	add 6
 	ld [hl+], a ; Y position
 	ld a, d
-	add 2
+	add -6
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -144,10 +136,10 @@ DrawPaintLine1:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 2
+	add -6
 	ld [hl+], a ; Y position
 	ld a, d
-	add 14
+	add 6
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -155,10 +147,10 @@ DrawPaintLine1:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 20
+	add 12
 	ld [hl+], a ; Y position
 	ld a, d
-	add -4
+	add -12
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -166,10 +158,10 @@ DrawPaintLine1:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -4
+	add -12
 	ld [hl+], a ; Y position
 	ld a, d
-	add 20
+	add 12
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -184,10 +176,8 @@ DrawPaintLine1:
 DrawPaintLine2:
 	; 0, 1 ----------------------------------
 	ld a, e
-	add 8
 	ld [hl+], a ; Y position
 	ld a, d
-	add 0
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -195,7 +185,6 @@ DrawPaintLine2:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 8
 	ld [hl+], a ; Y position
 	ld a, d
 	add -8
@@ -206,7 +195,6 @@ DrawPaintLine2:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 8
 	ld [hl+], a ; Y position
 	ld a, d
 	add 8
@@ -217,7 +205,6 @@ DrawPaintLine2:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 8
 	ld [hl+], a ; Y position
 	ld a, d
 	add -16
@@ -228,7 +215,6 @@ DrawPaintLine2:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 8
 	ld [hl+], a ; Y position
 	ld a, d
 	add 16
@@ -246,10 +232,8 @@ DrawPaintLine2:
 DrawPaintLine3:
 	; -1, 1 ----------------------------------
 	ld a, e
-	add 8
 	ld [hl+], a ; Y position
 	ld a, d
-	add -8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -257,10 +241,10 @@ DrawPaintLine3:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 2
+	add -6
 	ld [hl+], a ; Y position
 	ld a, d
-	add -14
+	add -6
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -268,10 +252,10 @@ DrawPaintLine3:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 14
+	add 6
 	ld [hl+], a ; Y position
 	ld a, d
-	add -2
+	add 6
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -279,10 +263,10 @@ DrawPaintLine3:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -4
+	add -12
 	ld [hl+], a ; Y position
 	ld a, d
-	add -20
+	add -12
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -290,10 +274,10 @@ DrawPaintLine3:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 20
+	add 12
 	ld [hl+], a ; Y position
 	ld a, d
-	add 4
+	add 12
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -308,10 +292,8 @@ DrawPaintLine3:
 DrawPaintLine4:
 	; -1, 0 ----------------------------------
 	ld a, e
-	add 0
 	ld [hl+], a ; Y position
 	ld a, d
-	add -8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -322,7 +304,6 @@ DrawPaintLine4:
 	add -8
 	ld [hl+], a ; Y position
 	ld a, d
-	add -8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -333,7 +314,6 @@ DrawPaintLine4:
 	add 8
 	ld [hl+], a ; Y position
 	ld a, d
-	add -8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -344,7 +324,6 @@ DrawPaintLine4:
 	add -16
 	ld [hl+], a ; Y position
 	ld a, d
-	add -8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -355,7 +334,6 @@ DrawPaintLine4:
 	add 16
 	ld [hl+], a ; Y position
 	ld a, d
-	add -8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -370,10 +348,8 @@ DrawPaintLine4:
 DrawPaintLine5:
 	; -1, -1 ----------------------------------
 	ld a, e
-	add -8
 	ld [hl+], a ; Y position
 	ld a, d
-	add -8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -381,10 +357,10 @@ DrawPaintLine5:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -14
+	add -6
 	ld [hl+], a ; Y position
 	ld a, d
-	add -2
+	add 6
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -392,10 +368,10 @@ DrawPaintLine5:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -2
+	add 6
 	ld [hl+], a ; Y position
 	ld a, d
-	add -14
+	add -6
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -403,10 +379,10 @@ DrawPaintLine5:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -20
+	add -12
 	ld [hl+], a ; Y position
 	ld a, d
-	add 4
+	add 12
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -414,10 +390,10 @@ DrawPaintLine5:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 4
+	add 12
 	ld [hl+], a ; Y position
 	ld a, d
-	add -20
+	add -12
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -432,10 +408,8 @@ DrawPaintLine5:
 DrawPaintLine6:
 	; 0, -1 ----------------------------------
 	ld a, e
-	add -8
 	ld [hl+], a ; Y position
 	ld a, d
-	add 0
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -443,7 +417,6 @@ DrawPaintLine6:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -8
 	ld [hl+], a ; Y position
 	ld a, d
 	add 8
@@ -454,7 +427,6 @@ DrawPaintLine6:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -8
 	ld [hl+], a ; Y position
 	ld a, d
 	add -8
@@ -465,7 +437,6 @@ DrawPaintLine6:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -8
 	ld [hl+], a ; Y position
 	ld a, d
 	add 16
@@ -476,7 +447,6 @@ DrawPaintLine6:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -8
 	ld [hl+], a ; Y position
 	ld a, d
 	add -16
@@ -494,10 +464,8 @@ DrawPaintLine6:
 DrawPaintLine7:
 	; 1, -1 ----------------------------------
 	ld a, e
-	add -8
 	ld [hl+], a ; Y position
 	ld a, d
-	add 8
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -505,10 +473,10 @@ DrawPaintLine7:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -2
+	add 6
 	ld [hl+], a ; Y position
 	ld a, d
-	add 14
+	add 6
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -516,10 +484,10 @@ DrawPaintLine7:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -14
+	add -6
 	ld [hl+], a ; Y position
 	ld a, d
-	add 2
+	add -6
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -527,10 +495,10 @@ DrawPaintLine7:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add 4
+	add 12
 	ld [hl+], a ; Y position
 	ld a, d
-	add 20
+	add 12
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number
@@ -538,10 +506,10 @@ DrawPaintLine7:
 	ld [hl+],a ; set attribute
 
 	ld a, e
-	add -20
+	add -12
 	ld [hl+], a ; Y position
 	ld a, d
-	add -4
+	add -12
 	ld [hl+], a ; X position
 	ld a, b
 	ld [hl+],a ; set tile number

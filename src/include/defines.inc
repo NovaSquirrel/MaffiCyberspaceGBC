@@ -89,6 +89,17 @@ DEF ACTOR_SIZE  = 16
 DEF ACTOR_COUNT = 16
 DEF PLAYER_PROJECTILE_COUNT = 7
 
+; Main projectile
+DEF PlayerProjectiles_type EQUS "(PlayerProjectiles + actor_type)"
+DEF PlayerProjectiles_pyl  EQUS "(PlayerProjectiles + actor_pyl)"
+DEF PlayerProjectiles_pyh  EQUS "(PlayerProjectiles + actor_pyh)"
+DEF PlayerProjectiles_pxl  EQUS "(PlayerProjectiles + actor_pxl)"
+DEF PlayerProjectiles_pxh  EQUS "(PlayerProjectiles + actor_pxh)"
+DEF PlayerProjectiles_var1 EQUS "(PlayerProjectiles + actor_var1)"
+DEF PlayerProjectiles_var2 EQUS "(PlayerProjectiles + actor_var2)"
+DEF PlayerProjectiles_var3 EQUS "(PlayerProjectiles + actor_var3)"
+DEF PlayerProjectiles_var4 EQUS "(PlayerProjectiles + actor_var4)"
+
 ; .----------------------------------------------------------------------------
 ; | Game-specific macros
 ; '----------------------------------------------------------------------------
