@@ -614,7 +614,6 @@ CollideWithPlayer:
 	or a
 	ret nz
 
-	ld b,b
 	scf
 	ret
 .NoCollision:
@@ -622,6 +621,18 @@ CollideWithPlayer:
 	ret
 
 CollideWithProjectiles:
+	; Quickly exit if there are no projectiles
+	ld a, [PlayerProjectiles_type]
+	or a
+	jp z, .NoCollisionNoPop
+
+	; Quickly exit if the actor has already been attacked by this wave of particles
+	ld a, [PaintShotID]
+	ld hl, actor_damaged_by_id
+	add hl, de
+	cp [hl]
+	jp z, .NoCollisionNoPop
+
 	; Check for collision with player projectiles
 	ld hl, actor_pyl
 	add hl, de
@@ -631,15 +642,38 @@ CollideWithProjectiles:
 	ld a, [hl+]
 	adc 0
 	ldh [temp2], a ; pyh
+	ld c, a
 	ld a, [hl+]
 	ldh [temp3], a ; pxl
 	ld a, [hl+]
 	ldh [temp4], a ; pxh
-	ld hl, actor_damaged_by_id
-	add hl, de
-	ld a, [hl]
-	ldh [temp5], a ; damaged by ID
+	ld b, a
 
+	; B = high X position, C = high Y position
+	; Quickly exit if too far from the center of the wave of projectiles
+	ld a, [PlayerProjectiles_pyh]
+	sub c
+	add a ; Check to see if it's negative
+	jr nc, :+
+		cpl
+		inc a
+
+	:
+	cp 6 ; Actually 3, doubled because of the "add a"
+	jp nc, .NoCollisionNoPop
+	ld a, [PlayerProjectiles_pxh]
+	sub b
+	add a ; Check to see if it's negative
+	jr nc, :+
+		cpl
+		inc a
+
+	:
+	cp 6 ; Actually 3, doubled because of the "add a"
+	jr nc, .NoCollisionNoPop
+
+	; -----------------------------------------------------
+	; OK, actually do some collisions
 	push de
 	ld hl, PlayerProjectiles + ACTOR_SIZE * (PLAYER_PROJECTILE_COUNT-1)
 .CollisionLoop:
@@ -648,13 +682,14 @@ CollideWithProjectiles:
 	jr nz, .Next
 		push hl
 		; Actor's actor_damaged_by_id can't equal the paint shot's var1 (which is the paint shot ID)
-		switch_hl_to_field actor_type, actor_var1
-		ldh a, [temp5]
-		cp [hl]
-		jr z, .PopNext
+		;switch_hl_to_field actor_type, actor_var1
+		;ldh a, [temp5]
+		;cp [hl]
+		;jr z, .PopNext
 
 		; Try to exit early; hopefully this works?
-		switch_hl_to_field actor_var1, actor_pyh
+		switch_hl_to_field actor_type, actor_pyh
+		;switch_hl_to_field actor_var1, actor_pyh
 		ldh a, [temp2]
 		sub [hl] ; actor_pyh
 		add a    ; Check to see if it's negative
