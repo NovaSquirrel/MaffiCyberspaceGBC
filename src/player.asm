@@ -1,5 +1,5 @@
 ; Maffi cyberspace game
-; Copyright (C) 2022 NovaSquirrel
+; Copyright (C) 2022-2024 NovaSquirrel
 ;
 ; This program is free software: you can redistribute it and/or
 ; modify it under the terms of the GNU General Public License as
@@ -260,6 +260,7 @@ RunPlayer::
 		call MakeFlickParticle
 		pop bc
 		jr nc, :+
+		ld [hl], b ; HL points to actor_var2, so the first paint projectile will have a 5 here
 		dec b
 		jr nz, :-
 	:
@@ -366,7 +367,7 @@ DrawPlayer::
 	; Adjust the horizontal offset for the pose, to keep the player centered and allow the tail to extend to the side differently
 	ld hl, HorizontalOffsetForPose
 	ld a, [DMG_PlayerDrawDirection]
-	rst_add_hl_a
+	add_hl_a
 	ld a, d
 	add [hl]
 	ld d, a
@@ -388,7 +389,7 @@ DrawPlayer::
 	; Get the animation frame for the direction, which will become a source pointer for the DMA or the slower copy
 	ld a, [PlayerDrawDirection]
 	ld hl, PlayerFrameForPose
-	rst_add_hl_a
+	add_hl_a
 	ld a, [hl]
 	ld [PlayerAnimationFrame], a
 
@@ -413,7 +414,7 @@ DrawPlayer::
 		rrca
 		rrca
 		and 3
-		rst_add_hl_a
+		add_hl_a
 		ld c, [hl]
 
 		; Offset the animation frame number
@@ -427,8 +428,15 @@ DrawPlayer::
 	ld a, [DMG_PlayerDrawDirection]
 	cp DIRECTION_LEFT
 	jr nz, :+
-		hswap [PlayerTile1], [PlayerTile2]
-		hswap [PlayerTile3], [PlayerTile4]
+		ldh a, [PlayerTile1]
+		ldh [PlayerTile2], a
+		add 2
+		ldh [PlayerTile1], a
+
+		ldh a, [PlayerTile3]
+		ldh [PlayerTile4], a
+		add 2
+		ldh [PlayerTile3], a
 		ld b, OAMF_XFLIP|PALETTE_PLAYER
 	:
 
@@ -620,11 +628,7 @@ MakeFlickParticle:
 
 	ld a, [PaintShotID]
 	ld [hl+], a ; actor_var1
-	xor a
-	ld [hl+], a ; actor_var2
-	ld [hl+], a ; actor_var3
-	ld [hl+], a ; actor_var4
-	ld [hl+], a
+	; Returns with HL pointing at actor_var2
 
 	scf
 	ret

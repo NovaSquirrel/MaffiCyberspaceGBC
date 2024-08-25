@@ -216,6 +216,15 @@ ActorPaintProjectile::
 		ret
 	:
 
+	; Only draw the first of the five paint projectiles (the center)
+	ld b, a
+	ld hl, actor_var2
+	add hl, de
+	ld a, [hl]
+	cp 5
+	ret nz
+	ld a, b
+
 	ld hl, PaintOffset
 	add_hl_a
 	ld c, [hl]
@@ -928,6 +937,10 @@ DrawActor_16x16:
 	rla
 	jr nc, .no_horiz_flip
 	hswap [temp1], [temp2]
+	ldh a, [temp1]
+	ldh [temp2], a
+	add 2
+	ldh [temp1], a
 	ld a, b
 	xor OAMF_XFLIP
 	ldh [temp3], a
@@ -1191,6 +1204,87 @@ DrawActor_8x16_YOffset:
 	ret
 
 
+; A = Sprite tile to draw
+; B = Attributes
+; C = Vertical offset
+; Draws paint projectile DE
+DrawPaintProjectile:
+	; temp1 = Sprite tile
+	; temp2 = Attributes
+	; temp3 = Vertical offset
+
+	; Store the tile numbers and attributes to use
+	ldh [temp1], a
+	ld a, b
+	ldh [temp2], a ; Attributes
+	ld a, c
+	ldh [temp3], a ; Vertical offset
+
+; --------------------------------
+; Convert X and Y positions
+	ld hl, actor_pyl
+	add hl, de
+	push de ; push "this" because DE will get used for screen coordinates
+
+	; ---------------------------------
+	; Get Y position first
+	ldh a, [CameraY+0]
+	ld c, a
+	ldh a, [CameraY+1]
+	ld b, a
+	
+	ld a, [hl+] ; HL: PYL --> PYH
+	sub c
+	ld c, a
+	ld a, [hl+] ; HL: PYH --> PXL
+	call SharedCameraSubtractCode_Bounded
+	jr nc, .out_of_bounds
+	;add 16-16
+	ld e, a ; E = screen Y position
+	ldh a, [temp3]
+	add a, e
+	ld e, a
+
+	; Get X position next
+	ldh a, [CameraX+0]
+	ld c, a
+	ldh a, [CameraX+1]
+	ld b, a
+
+	ld a, [hl+] ; HL: PXL --> PXH
+	sub c
+	ld c, a
+	ld a, [hl]  ; HL: PXH
+	call SharedCameraSubtractCode_Bounded
+	jr c, :+
+	.out_of_bounds:
+		pop de
+		ret
+	:
+	add 8-4
+	ld d, a ; D = screen X position
+
+	; ---------------------------------
+	; Use the jump table to determine which offsets to use for drawing all 5 projectile sprites
+
+	ld hl, DrawPaintLineTable
+	ld a, [PaintShootDirectionLock]
+	add a
+	add_hl_a
+	ld a, [hl+]
+	ld h, [hl]
+	ld l, a
+	push hl
+
+	ld h, high(OamBuffer)
+	ldh a, [OAMWrite]
+	ld l, a
+
+	ldh a, [temp1]
+	ld b, a
+	ldh a, [temp2]
+	ld c, a
+	ret
 ; Input: B (camera position high byte), A (entity position high byte),
 ;        C (entity position low byte; should already have subtracted camera position low byte)
 ; Output: A (pixel position), Carry set if within bounds & clear if outside bounds
