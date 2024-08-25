@@ -299,7 +299,6 @@ RunPlayer::
 		ld a, [PaintShotID]
 		ld [hl+], a ; actor_var1
 		pop bc
-		jr nc, :+
 		ld [hl], b ; HL points to actor_var2, so the first paint projectile will have a 5 here
 
 		ld a, l    ; Move to the next actor
