@@ -89,8 +89,18 @@ DEF ACTOR_SIZE  = 16
 DEF ACTOR_COUNT = 16
 DEF PLAYER_PROJECTILE_COUNT = 7
 
+DEF PLAYER_COLLISION_WIDTH = 10
+DEF ENEMY_COLLISION_WIDTH = 10
+DEF PROJECTILE_COLLISION_WIDTH = 10
+
+DEF PLAYER_COLLISION_HEIGHT = 4
+DEF ENEMY_COLLISION_HEIGHT = 4
+DEF PROJECTILE_COLLISION_HEIGHT = 10
+
 ; Main projectile
 DEF PlayerProjectiles_type EQUS "(PlayerProjectiles + actor_type)"
+DEF PlayerProjectiles_vxl  EQUS "(PlayerProjectiles + actor_vxl)"
+DEF PlayerProjectiles_vyl  EQUS "(PlayerProjectiles + actor_vyl)"
 DEF PlayerProjectiles_pyl  EQUS "(PlayerProjectiles + actor_pyl)"
 DEF PlayerProjectiles_pyh  EQUS "(PlayerProjectiles + actor_pyh)"
 DEF PlayerProjectiles_pxl  EQUS "(PlayerProjectiles + actor_pxl)"

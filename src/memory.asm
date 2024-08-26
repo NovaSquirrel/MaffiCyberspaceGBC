@@ -43,7 +43,15 @@ CameraX::   ds 2
 CameraY::   ds 2
 NegativeCameraX::   ds 2
 NegativeCameraY::   ds 2
-LYC_Interrupt_LCDC:: ds 1 ; Value to wrtie to LCDC when the LYC interrupt happens
+LYC_Interrupt_LCDC:: ds 1 ; Value to write to LCDC when the LYC interrupt happens
+
+; 8-bit collision coordinates, relative to the screen
+PlayerCollisionX::     ds 1
+PlayerCollisionY::     ds 1
+ProjectileCollisionX:: ds 1
+ProjectileCollisionY:: ds 1
+EnemyCollisionX::      ds 1
+EnemyCollisionY::      ds 1
 
 SECTION "BSS", WRAM0
 KeyRepeat::    ds 1

@@ -141,13 +141,12 @@ ActorSneaker::
 	.DoneMoveX:
 
 .DrawOnly:
-	;ld a, $34
 	ldh a, [framecount]
 	rrca
 	and %100
 	add a, $50
 	ld b, 0
-	jp DrawActor_16x16
+	jp DrawEnemy_16x16_AndCollide
 
 ActorKitty::
 	call EnemyCommon
@@ -200,7 +199,7 @@ ActorPaintProjectile::
 		ld b, [hl]
 		switch_hl_to_field actor_pxh, actor_pyl
 		ld a, [hl+]
-		sub PaintCollisionYOffset*16
+		sub PaintTerrainCollisionYOffset*16
 		ld a, [hl]
 		sbc 0
 		ld h, a
@@ -301,7 +300,7 @@ ActorEnemySpawning::
 ;	if height > 0:
 ;		break
 PaintOffset:
-def PaintCollisionYOffset equ 6
+def PaintTerrainCollisionYOffset equ 6
 def PaintOffsetOffset equ 4
 	db 0+PaintOffsetOffset, -3+PaintOffsetOffset, -6+PaintOffsetOffset, -8+PaintOffsetOffset, -10+PaintOffsetOffset, -12+PaintOffsetOffset, -14+PaintOffsetOffset, -15+PaintOffsetOffset, -16+PaintOffsetOffset, -17+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -18+PaintOffsetOffset, -17+PaintOffsetOffset, -16+PaintOffsetOffset, -15+PaintOffsetOffset, -14+PaintOffsetOffset, -12+PaintOffsetOffset, -10+PaintOffsetOffset, -8+PaintOffsetOffset, -6+PaintOffsetOffset, -3+PaintOffsetOffset, 0+PaintOffsetOffset
 
@@ -344,81 +343,6 @@ EnemyCommon:
 
 	ld hl, EnemyCount
 	inc [hl]
-
-	call CollideWithProjectiles
-	jr nc, .NoCollide
-		switch_hl_to_field actor_type, actor_vxl
-		ld a, [hl+]
-		ld b, a ; B = X Speed
-		ld a, [hl]
-		ld c, a ; C = Y Speed
-		switch_hl_to_field actor_vyl, actor_var1
-		ld a, [hl]
-		ldh [temp1], a
-
-		ld hl, actor_health
-		add hl, de
-		ld a, [hl] ; HL: actor_health
-		sub $08
-		ld [hl+], a
-		jr z, .OutOfHealth
-		jr nc, :+
-		.OutOfHealth:
-			call ActorBecomePoof
-
-			pop hl
-			ret
-		:
-		ld hl, actor_damaged_by_id
-		add hl, de
-		ldh a, [temp1]
-		ld [hl+], a ; HL: actor_damaged_by_id
-		ld a, 45 ; Timer amount
-		ld [hl+], a ; HL: actor_knockback_timer
-		ld a, b
-		ld [hl+], a ; HL: actor_knockback_sign_x
-		ld a, c
-		ld [hl],  a ; HL: actor_knockback_sign_y
-
-		; Create damage particle
-		ld hl, actor_pyl
-		add hl, de
-		ld a, [hl+] ; HL: actor_pyl
-		ldh [temp1], a
-		ld a, [hl+] ; HL: actor_pyh
-		ldh [temp2], a
-		ld a, [hl+] ; HL: actor_pxl
-		ldh [temp3], a
-		ld a, [hl+] ; HL: actor_pxh
-		ldh [temp4], a
-		call FindFreeActorSlot
-		jr nc, .NoFreeActorSlot
-			call ClearActorHL
-			ld a, ActorType_HurtStarProjectile
-			ld [hl], a ; HL: actor_type
-
-			switch_hl_to_field actor_type, actor_vxl
-			call RandomByte
-			and 31
-			sub 16
-			ld [hl+], a     ; actor_vxl
-			call RandomByte
-			and 31
-			sub 16
-			ld a, 1
-			ld [hl+], a    ; actor_vyl
-			ldh a, [temp1]
-			ld [hl+], a    ; actor_pyl
-			ldh a, [temp2]
-			ld [hl+], a    ; actor_pyh
-			ldh a, [temp3]
-			ld [hl+], a    ; actor_pxl
-			ldh a, [temp4]
-			ld [hl], a     ; actor_pxh
-		.NoFreeActorSlot:
-	.NoCollide:
-
-	call CollideWithPlayer
 
 	; Apply knockback if there is currently knockback
 	ld hl, actor_knockback_timer
@@ -517,288 +441,289 @@ EnemyCommon:
 KnockbackTable:
 	db 0, 1, 1, 1, 2, 1, 2, 2, 1, 3, 2, 3, 3, 3, 4, 4, 4, 5, 6, 6, 7, 8, 8, 10, 10, 12, 13, 14, 16, 18, 20, 22, 24, 27, 30, 34, 37, 41, 46, 51, 57, 63, 70, 78, 86, 96
 
+; .----------------------------------------------------------------------------
+; | Actor collision
+; '----------------------------------------------------------------------------
+
 CollideWithPlayer:
-	ld hl, actor_pyh
-	add hl, de
-
-	; Attempt to exit early
-	ldh a, [PlayerPYH]
-	sub [hl] ; actor_pyh
-	add a    ; Check to see if it's negative
-	jr nc, :+
-		cpl
-		inc a
-	:
-	cp 4 ; Actually 2, doubled because of the "add a"
-	ret nc
-	switch_hl_to_field actor_pyh, actor_pxh
-	ldh a, [PlayerPXH]
-	sub [hl] ; actor_pxh
-	add a    ; Check to see if it's negative
-	jr nc, :+
-		cpl
-		inc a
-	:
-	cp 4 ; Actually 2, doubled because of the "add a"
-	ret nc
-
-	; .------------------------------------------------
-	; | Check X coordinates
-	; '------------------------------------------------
-
-	; HL = actor_pxh
-	switch_hl_to_field actor_pxh, actor_pxl
-	ldh a, [PlayerPXL] ; pxl
-	ld c, a
-	ld a, [hl+] ; HL: actor_pxl
-	sub c
-	ld c, a
-	ldh a, [PlayerPXH] ; pxh
+	ldh a, [PlayerCollisionX]
 	ld b, a
-	ld a, [hl-] ; HL: actor_pxh
-	sbc b
-	ld b, a
-
-	sla c ; BC *= 2
-	rl b
-	jr nc, :+ ; Flip the sign if it's negative
-		xor a
-		sub c
-		ld c, a
-		ld a, 0
-		sbc b
-		ld b, a
-	:
-
-	; BC should be < (width1+width2)
-	; so BC < ((8*16)+(8*16)) or 256
-	; so B == 0
-	ld a, b
-	or a
-	jr nz, .NoCollision
-	bit 7, c
-	jr nz, .NoCollision
-
-	; .------------------------------------------------
-	; | Check Y coordinates
-	; '------------------------------------------------
-
-	switch_hl_to_field actor_pxl, actor_pyl
-
-	ldh a, [PlayerPYL] ; pyl
-	ld c, a
-	ld a, [hl+] ; HL: actor_pyl
-	sub c
-	ld c, a
-	ldh a, [PlayerPYH] ; pyh
-	ld b, a
-	ld a, [hl+] ; HL: actor_pyh
-	sbc b
-	ld b, a
-
-	sla c ; BC *= 2
-	rl b
-	jr nc, :+ ; Flip the sign if it's negative
-		xor a
-		sub c
-		ld c, a
-		ld a, 0
-		sbc b
-		ld b, a
-	:
-
-	; BC should be < (height1+height2)
-	; so BC < ((8*16)+(8*16)) or 256
-	; so B == 0
-	ld a, b
-	or a
-	ret nz
-
+	ldh a, [EnemyCollisionX]
 	scf
-	ret
-.NoCollision:
-	or a
+	sbc b ; Note will subtract n-1
+	sbc PLAYER_COLLISION_WIDTH-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+PLAYER_COLLISION_WIDTH-1 ; Carry set if overlap
+	ret nc
+
+	ldh a, [PlayerCollisionY]
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc PLAYER_COLLISION_HEIGHT-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+PLAYER_COLLISION_HEIGHT-1 ; Carry set if overlap
 	ret
 
 CollideWithProjectiles:
 	; Quickly exit if there are no projectiles
 	ld a, [PlayerProjectiles_type]
 	or a
-	jp z, .NoCollisionNoPop
+	ret z ; "or a" will have cleared carry
 
 	; Quickly exit if the actor has already been attacked by this wave of particles
 	ld a, [PaintShotID]
 	ld hl, actor_damaged_by_id
 	add hl, de
 	cp [hl]
-	jp z, .NoCollisionNoPop
+	ret z ; If Z is set, carry will not be set
 
-	; Check for collision with player projectiles
-	ld hl, actor_pyl
-	add hl, de
-	ld a, [hl+]
-	add PaintCollisionYOffset*16 ; <-- Move the actor's temporary position down to match the way paint projectiles subtract a bit
-	ldh [temp1], a ; pyl
-	ld a, [hl+]
-	adc 0
-	ldh [temp2], a ; pyh
-	ld c, a
-	ld a, [hl+]
-	ldh [temp3], a ; pxl
-	ld a, [hl+]
-	ldh [temp4], a ; pxh
-	ld b, a
+	ld a, [PaintShootDirectionLock]
+	and 3
+	; 0=vertical, 1=/, 2=horizontal, 3=\
+	jp z, CollideWithVerticalWave
+	dec a
+	jp z, CollideWithDiagonalWave1
+	dec a
+	jp z, CollideWithHorizontalWave
 
-	; B = high X position, C = high Y position
-	; Quickly exit if too far from the center of the wave of projectiles
-	ld a, [PlayerProjectiles_pyh]
-	sub c
-	add a ; Check to see if it's negative
-	jr nc, :+
-		cpl
-		inc a
+DEF ProjectileEnemyCollisionYOffset EQU 7
 
-	:
-	cp 6 ; Actually 3, doubled because of the "add a"
-	jp nc, .NoCollisionNoPop
+CollideWithDiagonalWave2: ;\
+	; Quick rejection
 	ld a, [PlayerProjectiles_pxh]
-	sub b
-	add a ; Check to see if it's negative
+	ld hl, actor_pxh
+	add hl, de
+	sub [hl]
+	add a ; Check sign
 	jr nc, :+
 		cpl
 		inc a
-
 	:
 	cp 6 ; Actually 3, doubled because of the "add a"
-	jr nc, .NoCollisionNoPop
+	ret nc
+	; ---
+	switch_hl_to_field actor_pxh, actor_pyh
+	ld a, [PlayerProjectiles_pyh]
+	sub [hl]
+	add a ; Check sign
+	jr nc, :+
+		cpl
+		inc a
+	:
+	cp 6 ; Actually 3, doubled because of the "add a"
+	ret nc
+	; ---------------------------------
 
-	; -----------------------------------------------------
-	; OK, actually do some collisions
-	push de
-	ld hl, PlayerProjectiles + ACTOR_SIZE * (PLAYER_PROJECTILE_COUNT-1)
-.CollisionLoop:
-	ld a, [hl]
-	cp ActorType_PaintProjectile
-	jr nz, .Next
-		push hl
-		; Actor's actor_damaged_by_id can't equal the paint shot's var1 (which is the paint shot ID)
-		;switch_hl_to_field actor_type, actor_var1
-		;ldh a, [temp5]
-		;cp [hl]
-		;jr z, .PopNext
+	; Collision 1
+	ldh a, [ProjectileCollisionX]
+	sub 9
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	jr nc, .try2
 
-		; Try to exit early; hopefully this works?
-		switch_hl_to_field actor_type, actor_pyh
-		;switch_hl_to_field actor_var1, actor_pyh
-		ldh a, [temp2]
-		sub [hl] ; actor_pyh
-		add a    ; Check to see if it's negative
-		jr nc, :+
-			cpl
-			inc a
-		:
-		cp 4 ; Actually 2, doubled because of the "add a"
-		jr nc, .PopNext
-		inc l
-		inc l
-		ldh a, [temp4]
-		sub [hl] ; actor_pxh
-		add a    ; Check to see if it's negative
-		jr nc, :+
-			cpl
-			inc a
-		:
-		cp 4 ; Actually 2, doubled because of the "add a"
-		jr nc, .PopNext
+	ldh a, [ProjectileCollisionY]
+	sub 9-ProjectileEnemyCollisionYOffset
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
+	ret c
+.try2:
+	; Collision 2
+	ldh a, [ProjectileCollisionX]
+	dec a
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	jr nc, .try3
 
-		; .------------------------------------------------
-		; | Check Y coordinates
-		; '------------------------------------------------
+	ldh a, [ProjectileCollisionY]
+	add 2+ProjectileEnemyCollisionYOffset
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
+	ret nc
+.try3:
+	; Collision 3
+	ldh a, [ProjectileCollisionX]
+	add 8
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	ret nc
 
-		switch_hl_to_field actor_pxh, actor_pyl
-	
-		ldh a, [temp1] ; pyl
-		ld c, a
-		ld a, [hl+] ; HL: actor_pyl
-		sub c
-		ld c, a
-		ldh a, [temp2] ; pyh
-		ld b, a
-		ld a, [hl+] ; HL: actor_pyh
-		sbc b
-		ld b, a
+	ldh a, [ProjectileCollisionY]
+	add 12+ProjectileEnemyCollisionYOffset
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
+	ret
 
-		sla c ; BC *= 2
-		rl b
-		jr nc, :+ ; Flip the sign if it's negative
-			xor a
-			sub c
-			ld c, a
-			ld a, 0
-			sbc b
-			ld b, a
-		:
+CollideWithDiagonalWave1: ;/
+	; Quick rejection
+	ld a, [PlayerProjectiles_pxh]
+	ld hl, actor_pxh
+	add hl, de
+	sub [hl]
+	add a ; Check sign
+	jr nc, :+
+		cpl
+		inc a
+	:
+	cp 6 ; Actually 3, doubled because of the "add a"
+	ret nc
+	; ---
+	switch_hl_to_field actor_pxh, actor_pyh
+	ld a, [PlayerProjectiles_pyh]
+	sub [hl]
+	add a ; Check sign
+	jr nc, :+
+		cpl
+		inc a
+	:
+	cp 6 ; Actually 3, doubled because of the "add a"
+	ret nc
+	; ---------------------------------
 
-		; BC should be < (height1+height2)
-		; so BC < ((12*16)+(4*16)) or 256
-		; so B == 0 is enough
-		ld a, b
-		or a
-		jr nz, .PopNext
+	; Collision 1
+	ldh a, [ProjectileCollisionX]
+	sub 9
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	jr nc, .try2
 
-		; .------------------------------------------------
-		; | Check X coordinates
-		; '------------------------------------------------
+	ldh a, [ProjectileCollisionY]
+	add 12+ProjectileEnemyCollisionYOffset
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
+	ret c
+.try2:
+	; Collision 2
+	ldh a, [ProjectileCollisionX]
+	dec a
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	jr nc, .try3
 
-		; HL = actor_pyh
-		ldh a, [temp3] ; pxl
-		ld c, a
-		ld a, [hl+] ; HL: actor_pxl
-		sub c
-		ld c, a
-		ldh a, [temp4] ; pxh
-		ld b, a
-		ld a, [hl+] ; HL: actor_pxh
-		sbc b
-		ld b, a
+	ldh a, [ProjectileCollisionY]
+	add 2+ProjectileEnemyCollisionYOffset
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
+	ret nc
+.try3:
+	; Collision 3
+	ldh a, [ProjectileCollisionX]
+	add 8
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	ret nc
 
-		sla c ; BC *= 2
-		rl b
-		jr nc, :+ ; Flip the sign if it's negative
-			xor a
-			sub c
-			ld c, a
-			ld a, 0
-			sbc b
-			ld b, a
-		:
+	ldh a, [ProjectileCollisionY]
+	sub 9-ProjectileEnemyCollisionYOffset
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 10-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
+	ret
 
-		; BC should be < (width1+width2)
-		; so BC < ((16*16)+(8*16)) or 384 or $180
-		; so B == 0 and C >= $80 is enough
-		ld a, b
-		or a
-		jr nz, .PopNext
-		bit 7, c
-		jr nz, .PopNext
+CollideWithVerticalWave:
+	ldh a, [ProjectileCollisionX]
+	sub 4-(PROJECTILE_COLLISION_WIDTH/2)
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc PROJECTILE_COLLISION_WIDTH-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+PROJECTILE_COLLISION_WIDTH-1 ; Carry set if overlap
+	ret nc
 
-		; -------------------------------------------------
-		; There is a collision!!
-		pop hl ; HL = projectile that was collided with
-		pop de ; DE = this, still
-		scf    ; True
-		ret
+	ldh a, [ProjectileCollisionY]
+	sub 12-ProjectileEnemyCollisionYOffset
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 40-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+40-1 ; Carry set if overlap
+	ret
 
-		.PopNext:
-		pop hl
-	.Next:
-	ld a, l
-	sub ACTOR_SIZE
-	ld l, a
-	jr nc, .CollisionLoop
-.NoCollision:
-	pop de
-	or a ; Clear carry
+CollideWithHorizontalWave:
+	ldh a, [ProjectileCollisionX]
+	sub 16
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc 40-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+40-1 ; Carry set if overlap
+	ret nc
+
+	ldh a, [ProjectileCollisionY]
+	add 8-(PROJECTILE_COLLISION_HEIGHT/2)+ProjectileEnemyCollisionYOffset
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc PROJECTILE_COLLISION_HEIGHT-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+PROJECTILE_COLLISION_HEIGHT-1 ; Carry set if overlap
 	ret
 
 ; .----------------------------------------------------------------------------
@@ -1012,6 +937,8 @@ DrawActor_16x16:
 	jr nc, .out_of_bounds
 	;add 16-16
 	ld e, a ; E = screen Y position
+	add 15-(ENEMY_COLLISION_HEIGHT/2)
+	ldh [EnemyCollisionY], a
 
 	; Get X position next
 	ldh a, [CameraX+0]
@@ -1027,10 +954,13 @@ DrawActor_16x16:
 	jr c, :+
 	.out_of_bounds:
 		pop de
+		or a ; Not drawn
 		ret
 	:
 	;add 8-8
 	ld d, a ; D = screen X position
+	add 8-(ENEMY_COLLISION_WIDTH/2)
+	ldh [EnemyCollisionX], a
 	; ---------------------------------
 
 	ldh a, [temp3]
@@ -1065,6 +995,89 @@ DrawActor_16x16:
 
 	ld a, l
 	ldh [OAMWrite], a
+	scf
+	ret
+
+; ---------------------------------------------------------
+
+DrawEnemy_16x16_AndCollide:
+	call DrawActor_16x16
+	ret nc
+
+	call CollideWithProjectiles
+	jr nc, .NoCollide
+		;switch_hl_to_field actor_type, actor_vxl
+		;ld a, [hl+]
+		;ld b, a ; B = X Speed
+		;ld a, [hl]
+		;ld c, a ; C = Y Speed
+		;switch_hl_to_field actor_vyl, actor_var1
+		;ld a, [hl]
+		;ldh [temp1], a
+
+		ld hl, actor_health
+		add hl, de
+		ld a, [hl] ; HL: actor_health
+		sub $08
+		ld [hl+], a
+		jr z, .OutOfHealth
+		jr nc, :+
+		.OutOfHealth:
+			call ActorBecomePoof
+
+			pop hl
+			ret
+		:
+		ld hl, actor_damaged_by_id
+		add hl, de
+		ld a, [PaintShotID]
+		ld [hl+], a ; HL: actor_damaged_by_id
+		ld a, 45 ; Timer amount
+		ld [hl+], a ; HL: actor_knockback_timer
+		ld a, [PlayerProjectiles_vxl]
+		ld [hl+], a ; HL: actor_knockback_sign_x
+		ld a, [PlayerProjectiles_vyl]
+		ld [hl],  a ; HL: actor_knockback_sign_y
+
+		; Create damage particle
+		ld hl, actor_pyl
+		add hl, de
+		ld a, [hl+] ; HL: actor_pyl
+		ldh [temp1], a
+		ld a, [hl+] ; HL: actor_pyh
+		ldh [temp2], a
+		ld a, [hl+] ; HL: actor_pxl
+		ldh [temp3], a
+		ld a, [hl+] ; HL: actor_pxh
+		ldh [temp4], a
+		call FindFreeActorSlot
+		jr nc, .NoFreeActorSlot
+			call ClearActorHL
+			ld a, ActorType_HurtStarProjectile
+			ld [hl], a ; HL: actor_type
+
+			switch_hl_to_field actor_type, actor_vxl
+			call RandomByte
+			and 31
+			sub 16
+			ld [hl+], a     ; actor_vxl
+			call RandomByte
+			and 31
+			sub 16
+			ld a, 1
+			ld [hl+], a    ; actor_vyl
+			ldh a, [temp1]
+			ld [hl+], a    ; actor_pyl
+			ldh a, [temp2]
+			ld [hl+], a    ; actor_pyh
+			ldh a, [temp3]
+			ld [hl+], a    ; actor_pxl
+			ldh a, [temp4]
+			ld [hl], a     ; actor_pxh
+		.NoFreeActorSlot:
+	.NoCollide:
+
+	call CollideWithPlayer
 	ret
 
 ; ---------------------------------------------------------
@@ -1272,11 +1285,11 @@ DrawPaintProjectile:
 	sub c
 	ld c, a
 	ld a, [hl+] ; HL: PYH --> PXL
-	call SharedCameraSubtractCode_Bounded
-	jr nc, .out_of_bounds
+	call SharedCameraSubtractCode
 	;add 16-16
 	ld e, a ; E = screen Y position
-	ldh a, [temp3]
+	ldh [ProjectileCollisionY], a
+	ldh a, [temp3] ; Y offset
 	add a, e
 	ld e, a
 
@@ -1290,14 +1303,10 @@ DrawPaintProjectile:
 	sub c
 	ld c, a
 	ld a, [hl]  ; HL: PXH
-	call SharedCameraSubtractCode_Bounded
-	jr c, :+
-	.out_of_bounds:
-		pop de
-		ret
-	:
+	call SharedCameraSubtractCode
 	add 8-4
 	ld d, a ; D = screen X position
+	ldh [ProjectileCollisionX], a
 
 	; ---------------------------------
 	; Use the jump table to determine which offsets to use for drawing all 5 projectile sprites

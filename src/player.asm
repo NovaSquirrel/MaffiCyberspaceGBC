@@ -407,6 +407,8 @@ DrawPlayer::
 	call SharedCameraSubtractCode
 	add 8-8
 	ld d, a
+	add 8-(PLAYER_COLLISION_WIDTH/2)
+	ldh [PlayerCollisionX], a
 
 	; Adjust the horizontal offset for the pose, to keep the player centered and allow the tail to extend to the side differently
 	ld hl, HorizontalOffsetForPose
@@ -429,6 +431,8 @@ DrawPlayer::
 	call SharedCameraSubtractCode
 	add 16-24-7
 	ld e, a
+	add 31-(PLAYER_COLLISION_HEIGHT/2)
+	ldh [PlayerCollisionY], a
 
 	; Get the animation frame for the direction, which will become a source pointer for the DMA or the slower copy
 	ld a, [PlayerDrawDirection]
@@ -586,23 +590,6 @@ WalkCycle:
 	db 0, 1, 0, 2
 HorizontalOffsetForPose:
 	db -2, 2, 2, -2
-
-; Input: B (camera position high byte), A (entity position high byte),
-;        C (entity position low byte; should already have subtracted camera position low byte)
-; Output: A (pixel position)
-SharedCameraSubtractCode:
-	sbc b
-	ld b, a
-
-	; BC = entity position - camera
-	ld a, c
-	rept 4
-		sra b
-		rra
-	endr
-	adc 0
-	; A = low half of BC>>4
-	ret
 
 ; Player frames
 	enum_start

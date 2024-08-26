@@ -556,6 +556,23 @@ ClearActorHL::
 	pop hl
 	ret
 
+; Input: B (camera position high byte), A (entity position high byte),
+;        C (entity position low byte; should already have subtracted camera position low byte)
+; Output: A (pixel position)
+SharedCameraSubtractCode::
+	sbc b
+	ld b, a
+
+	; BC = entity position - camera
+	ld a, c
+	rept 4
+		sra b
+		rra
+	endr
+	adc 0
+	; A = low half of BC>>4
+	ret
+
 ; -----------------------------------------------
 ; LCD copy routines, by ISSOtm
 
