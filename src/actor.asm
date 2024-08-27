@@ -541,26 +541,26 @@ CollideWithDiagonalWave2: ;\
 .try2:
 	; Collision 2
 	ldh a, [ProjectileCollisionX]
-	dec a
+	sub 3
 	ld b, a
 	ldh a, [EnemyCollisionX]
 	scf
 	sbc b ; Note will subtract n-1
-	sbc 10-1
+	sbc 16-1
 	ccf
-	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	adc ENEMY_COLLISION_WIDTH+16-1 ; Carry set if overlap
 	jr nc, .try3
 
 	ldh a, [ProjectileCollisionY]
-	add 2+ProjectileEnemyCollisionYOffset
+	add ProjectileEnemyCollisionYOffset
 	ld b, a
 	ldh a, [EnemyCollisionY]
 	scf
 	sbc b ; Note will subtract n-1
-	sbc 10-1
+	sbc 16-1
 	ccf
-	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
-	ret nc
+	adc ENEMY_COLLISION_HEIGHT+16-1 ; Carry set if overlap
+	ret c
 .try3:
 	; Collision 3
 	ldh a, [ProjectileCollisionX]
@@ -636,25 +636,25 @@ CollideWithDiagonalWave1: ;/
 .try2:
 	; Collision 2
 	ldh a, [ProjectileCollisionX]
-	dec a
+	sub 3
 	ld b, a
 	ldh a, [EnemyCollisionX]
 	scf
 	sbc b ; Note will subtract n-1
-	sbc 10-1
+	sbc 16-1
 	ccf
-	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	adc ENEMY_COLLISION_WIDTH+16-1 ; Carry set if overlap
 	jr nc, .try3
 
 	ldh a, [ProjectileCollisionY]
-	add 2+ProjectileEnemyCollisionYOffset
+	add ProjectileEnemyCollisionYOffset
 	ld b, a
 	ldh a, [EnemyCollisionY]
 	scf
 	sbc b ; Note will subtract n-1
-	sbc 10-1
+	sbc 16-1
 	ccf
-	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
+	adc ENEMY_COLLISION_HEIGHT+16-1 ; Carry set if overlap
 	ret nc
 .try3:
 	; Collision 3
