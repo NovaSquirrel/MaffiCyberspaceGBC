@@ -655,7 +655,7 @@ CollideWithDiagonalWave1: ;/
 	sbc 16-1
 	ccf
 	adc ENEMY_COLLISION_HEIGHT+16-1 ; Carry set if overlap
-	ret nc
+	ret c
 .try3:
 	; Collision 3
 	ldh a, [ProjectileCollisionX]
