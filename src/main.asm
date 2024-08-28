@@ -135,14 +135,18 @@ Gameplay::
 	ld c, 4
 	call memset8
 
-	ld a, 1
-	ldh [rVBK], a
-	ld hl, _SCRN1
-	ld a, 7
-	ld c, 20
-	call memset8
-	xor a
-	ldh [rVBK], a
+	ldh a, [IsNotGameBoyColor]
+	or a
+	jr nz, :+
+		ld a, 1
+		ldh [rVBK], a
+		ld hl, _SCRN1
+		ld a, 7
+		ld c, 20
+		call memset8
+		xor a
+		ldh [rVBK], a
+	:
 
 	call InitCamera
 
