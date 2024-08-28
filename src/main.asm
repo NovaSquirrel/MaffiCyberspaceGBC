@@ -135,14 +135,14 @@ Gameplay::
 	ld c, 4
 	call memset8
 
-;	ld a, 1
-;	ldh [rVBK], a
-;	ld hl, _SCRN1
-;	ld a, 7
-;	ld c, 20
-;	call memset8
-;	xor a
-;	ldh [rVBK], a
+	ld a, 1
+	ldh [rVBK], a
+	ld hl, _SCRN1
+	ld a, 7
+	ld c, 20
+	call memset8
+	xor a
+	ldh [rVBK], a
 
 	call InitCamera
 
@@ -283,9 +283,7 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 
 	ld a, [framecount]
 	and 63
-	jr nz, .NoSpawnEnemy
-		call SpawnEnemy
-	.NoSpawnEnemy:
+	call z, SpawnEnemy
 
 	; Randomly swap two actors to implement flickering
 	call RandomByte

@@ -84,10 +84,10 @@ BG_Palette:
   rgb 22, 22, 22
   rgb 31, 31, 31
 ; 7 status line?
-  rgb  0,  0,  0
-  rgb 13, 13, 13
-  rgb 22, 22, 22
-  rgb 31, 31, 31
+  rgb 0, 0, 0 ;$49/8,$41/8,$82/8
+  rgb $78/8,$64/8,$c6/8
+  rgb $9c/8,$8b/8,$db/8
+  rgb $ce/8,$aa/8,$ed/8
 
 Sprite_Palette:
 ; Sprite palette
@@ -135,5 +135,6 @@ Sprite_Palette:
 ; 7 Maffi
   rgb  0,  0,  0
   rgb  6,  6,  6              ; Black
-  rgb  15-3, 8-3,  31-3       ; Purple
+;  rgb  15-3, 8-3,  31-3       ; Purple
+  rgb  15-4, 8-4,  31-4       ; Purple (try to be more purple on GBC?)
   rgb  24-2, 24-2, $14 ;24-2  ; Light gray

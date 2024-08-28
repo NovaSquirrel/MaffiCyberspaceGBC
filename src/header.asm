@@ -154,6 +154,7 @@ EntryPoint:
 	call pb16_unpack_block
 	
 	ld de, StatusTileset
+	ld a, [IsSuperGameBoy]
 	or a
 	jr z, :+
 		ld de, StatusTilesetSGB
