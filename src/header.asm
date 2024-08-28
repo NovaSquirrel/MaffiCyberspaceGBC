@@ -105,6 +105,13 @@ EntryPoint:
 	ld bc, 4096-2
 	call memclear
 
+	ldh a, [IsNotGameBoyColor]
+	or a
+	call nz, detect_sgb
+	ld a, [IsSuperGameBoy]
+	or a
+	call nz, SetupSGBForGameplay
+
 	call InitParallax
 
 	; Copy in DMA routine
@@ -145,8 +152,12 @@ EntryPoint:
 	ld hl, _VRAM9000
 	ld b, 8*16
 	call pb16_unpack_block
-
+	
 	ld de, StatusTileset
+	or a
+	jr z, :+
+		ld de, StatusTilesetSGB
+	:
 	ld hl, _VRAM8000 + $F00
 	ld b, 1*16
 	call pb16_unpack_block
@@ -219,6 +230,8 @@ SpriteTileset:
 	incbin "res/tilesets_8x16/sprite_tiles.pb16"
 StatusTileset:
 	incbin "res/tilesets/status_tiles.pb16"
+StatusTilesetSGB:
+	incbin "res/tilesets/status_tiles_sgb.pb16"
 SpWalkerTileset:
 	incbin "res/tilesets_8x16/sp_walker.pb16"
 SpBallTileset:

@@ -56,7 +56,7 @@ FIXFLAGS += -c
 # FIXFLAGS += -C
 
 # Super Game Boy compatible
-# FIXFLAGS += -s
+FIXFLAGS += -s
 
 # Game Boy mode
 # LDFLAGS += -d
