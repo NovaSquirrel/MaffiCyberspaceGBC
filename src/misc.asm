@@ -81,14 +81,19 @@ memset::
   ret
 
 memcpy::
-  ld a, [hl+]
-  ld [de], a
-  inc de
-  dec bc
-  ld a, b 
-  or c
-  jr nz, memcpy
-  ret
+    ; Increment B if C is non-zero
+    dec bc
+    inc b
+    inc c
+.loop
+    ld a, [hl+]
+    ld [de], a
+    inc de
+    dec c
+    jr nz, .loop
+    dec b
+    jr nz, .loop
+    ret
 
 memcpy8::
   ld a, [hl+]

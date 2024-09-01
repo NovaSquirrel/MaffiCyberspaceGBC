@@ -98,10 +98,9 @@ read_pad_and_discard:
 ; is done by writing the nametable base addresses and sprite size
 ; to rLCDC with bit 7 set to true.
 ; @return A = 0
-lcd_off::
+lcd_off_busywait::
   call busy_wait_vblank
 
-  ; Use a RMW instruction to turn off only bit 7
   xor a
   ldh [rLCDC],a
   ret
@@ -305,7 +304,7 @@ sgb_send_immediate::
 sgb_freeze:
   ; Freeze display while doing transfers
   call busy_wait_vblank
-  ld a, $17*8+1
+  ld a, SGB_COMMAND_MASK_EN*8+1
   ld b, $01  ; Freeze current screen
   jr sgb_send_ab
 
@@ -315,12 +314,14 @@ sgb_freeze:
 ; *_TRN commands.
 ; Rewritten by Nova
 sgb_load_trn_tilemap:
-  call lcd_off
+  call lcd_off_busywait
   ld a, %11100100
   ldh [rBGP], a
 
   ld hl, _SCRN0
   xor a
+  ldh [rSCX], a
+  ldh [rSCY], a
   ld b, 20
   ld de, 32-20
 .loop:
@@ -349,7 +350,7 @@ sgb_send_trn_ab:
   ldh [rLCDC],a
   ld a, l
   call sgb_send_ab
-  jp lcd_off
+  jp lcd_off_busywait
 
 ;;
 ; Sets Super Game Boy palettes and unfreezes the display.
@@ -499,89 +500,43 @@ sgb_load_border::
   ld a, SGB_COMMAND_PCT_TRN<<3|1
   jp sgb_send_trn_ab
 
-; Calculating palette fade sequences ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;sgbfade_calc_palettes::
-;  ; Prepare VRAM for a data transfer
-;  call sgb_freeze
-;  call sgb_load_trn_tilemap
-;
-;  ; Palettes 0-3 are fade level 4, 4-7 fade level 8, ...,
-;  ; 28-31 are fade level 32
-;  ld a, 4
-;
-;  .steploop:
-;    ld [fade_level], a
-;    ld hl, sgb_ingame_palette
-;    ld de, $9000
-;    ld b, sgb_ingame_palette_end - sgb_ingame_palette
-;    call gbcfade_calc_white
-;    ld hl, $9000
-;    ld de, $9100
-;    ld b, (sgb_ingame_palette_end - sgb_ingame_palette)/3
-;    call gbcfade_combine_components
-;
-;    ; Calc destination address
-;    ld a, [fade_level]  ; 4-32
-;    sub 4             ; 0-28
-;    add a
-;    add a
-;    add a             ; 0-224
-;    ld e, a
-;    ld d, $80  ; DE: start of destination
-;    .igcopyloop:
-;      ld hl, $9100
-;      call .copy1color
-;      call .copy1color
-;      ld a, e  ; $04, $0C, $14, $1C plus 32*step
-;      and $18
-;      rra
-;      rra
-;      or $08
-;      ld l, a
-;      call .copy1color
-;      ld l, $06
-;      call .copy1color
-;      ld a, e
-;      and $1F
-;      jr nz, .igcopyloop
-;    ld a, [fade_level]
-;    add 4
-;    cp 36
-;    jr c, .steploop
-;  ld hl, $8100  ; palette 32: b&w
-;  ld de, gbmonopalette
-;  ld c, 8
-;  rst MemcpySmall
-;  call sgb_send_pal_trn
-;  ld b, 28
-;  jp sgb_set_palettes_from_b
-
-;.copy1color:
-;  ld a, [hl+]
-;  ld [de], a
-;  inc de
-;  ld a, [hl+]
-;  ld [de], a
-;  inc de
-;  ret
-
-
-;;
-; Clears the Super Game Boy attribute table to 0.
-SetupSGBForGameplay::
+;--------------------------------------
+SetupSGB::
 	ld a, [IsSuperGameBoy]
 	or a
 	ret z
 
-	ld hl, sgb_cmd_clear_attrs
-	call sgb_send
-	ld hl, sgb_status_bar_attr
-	call sgb_send
-	ld hl, sgb_gameplay_pal01
-	call sgb_send
-	ld hl, sgb_gameplay_pal23
-	jp sgb_send
+	; TODO: display something first
+	call sgb_freeze
+
+	call sgb_load_trn_tilemap
+
+	; Copy in the palettes
+	ld hl, sgb_palettes
+	ld de, _VRAM
+	ld c, sgb_palettes_end - sgb_palettes
+	call memcpy8
+	call sgb_send_pal_trn
+
+	; Copy in the attribute screens
+	ld hl, sgb_attributes
+	ld de, _VRAM
+	ld c, sgb_attributes_end - sgb_attributes
+	call memcpy
+	ld a, SGB_COMMAND_ATTR_TRN<<3|1
+	ld b, 0
+	call sgb_send_trn_ab
+
+	; Set the palettes and attribute screen
+	ld b, 0
+	ld c, 1
+	ld d, 2
+	ld e, 3
+	ld a, %11000001
+	call sgb_set_palettes_bcde_attr_a
+
+	jp lcd_off_busywait
 
 section "sgb_palettes", ROM0
 
@@ -595,37 +550,19 @@ sgb_cmd_clear_attrs::
 
 	db 0, 0, 0, 0, 0, 0, 0, 0
 
-sgb_status_bar_attr::
-	db SGB_COMMAND_ATTR_CHR*8+1
-	db 0  ; X position
-	db 17 ; Y position
-	dw 20 ; Number of data sets
-	db 0  ; Left to right
-	db %01010101
-	db %01011010
-	db %10101010
-	db %10101111
-	db %11111111
-	db 0, 0, 0, 0, 0
-
-sgb_gameplay_pal01::
-	db SGB_COMMAND_PAL01*8+1
-
+;--------------------------------------
+sgb_palettes:
+	; Main
 	rgb 31, 31, 31
 	rgb $59/8, $cf/8, $93/8
-	;rgb $27/8, $89/8, $cd/8
 	rgb $6a/8, $88/8, $e9/8
 	rgb 0, 0, 0
 
-	; Critters left to find
-	rgb $e8/8, $8a/8, $36/8
+	; Critters left to find (yellow/orange)
+	rgb 31, 31, 31
 	rgb $f8/8, $c5/8, $3a/8
+	rgb $e8/8, $8a/8, $36/8
 	rgb 0, 0, 0
-
-	db 0 ; Unused
-
-sgb_gameplay_pal23::
-	db SGB_COMMAND_PAL23*8+1
 
 	; Paint bar
 	rgb 31, 31, 31
@@ -634,21 +571,26 @@ sgb_gameplay_pal23::
 	rgb $49/8,$41/8,$82/8
 
 	; Health
+	rgb 31, 31, 31
 	rgb $e2/8,$72/8,$85/8
 	rgb $b2/8,$52/8,$66/8
 	rgb 0, 0, 0
+sgb_palettes_end:
 
-	db 0 ; Unused
+sgb_attributes:
+; ATF 0: blank
+	rept 18
+	db 0, 0, 0, 0, 0
+	endr
 
-sgb_ingame_palette:
-  db 31,31,18  ; Libbet's bodysuit
-  db 31,23,21  ; Libbet's skin
-  db 31, 0,31  ; unused color
-  db  7, 4, 0  ; brown/black
-  db 18,18,18  ; dark gray and white tiles
-  db  4, 4,27  ; blue (with black)
-  db 14,29,14  ; green (with white)
-  db 18,12, 0  ; walls & status bar
-sgb_ingame_palette_end:
+; ATF 1: gameplay
+	rept 17
+	db 0, 0, 0, 0, 0
+	endr
+	db %01010101, %01011010, %10101010, %10101111, %11111111
+sgb_attributes_end:
+
+
+
 
 sgbborder: db 0 ;incbin "obj/gb/sgbborder.border"

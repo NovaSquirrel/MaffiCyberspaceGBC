@@ -100,6 +100,9 @@ EntryPoint:
 		ldh [rSVBK], a ; WRAM bank
 .NotGameBoyColor:
 
+	; Turn the screen off for any initialization that needs to be done
+	call ScreenOff
+
 	; Clear RAM (but not the return address)
 	ld hl, _RAM
 	ld bc, 4096-2
@@ -110,7 +113,7 @@ EntryPoint:
 	call nz, detect_sgb
 	ld a, [IsSuperGameBoy]
 	or a
-	call nz, SetupSGBForGameplay
+	call nz, SetupSGB
 
 	call InitParallax
 
@@ -119,9 +122,6 @@ EntryPoint:
 	ld de, RunOamDMA
 	ld c, oam_dma_routine_end - oam_dma_routine
 	call memcpy8
-
-	; Copy in the tileset, which the screen should be off for
-	call ScreenOff
 
 	ldh a, [IsNotGameBoyColor]
 	or a
