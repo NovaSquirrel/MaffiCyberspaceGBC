@@ -66,9 +66,9 @@ ParallaxSource:: ds 2
 
 PreviousOAMWrite:: ds 1
 
-PaintAmount::              ds 1
+PaintAmount::                 ds 1
 PaintAmountShownOnscreen::    ds 1 ; For detecting when to update the bar
-PaintShootDirection::      ds 1 ; 0=right, 1=down right, 2=down, etc.
+PaintShootDirection::         ds 1 ; 0=right, 1=down right, 2=down, etc.
 PaintShootDiagonalDirection:: ds 1
 PaintShootDirectionLock::     ds 1
 PaintShotID::                 ds 1 ; Increments every shot
@@ -77,7 +77,7 @@ PaintShotID::                 ds 1 ; Increments every shot
 ; Timers
 PaintShootDiagonalTimer:: ds 1
 PaintShootingTimer::      ds 1
-PaintRefillCooldown::      ds 1
+PaintRefillCooldown::     ds 1
 
 ; Variables for the alternative player frame streaming that's used when DMA is not available
 DMG_PlayerAnimationFrame_InProgress::   ds 1 ; If 1, write the second set of tiles

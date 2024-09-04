@@ -454,6 +454,24 @@ DrawPlayer::
 	dec b
 	jr nz, :-
 
+	; Shooting animation
+	ld a, [PaintShootingTimer]
+	cp 25/2
+	jr c, :+
+		ld a, [PlayerAnimationFrame]
+		add 4
+		ld [PlayerAnimationFrame], a
+		jr .NotPressingDirection
+	:
+	cp 25/2-4
+	jr c, :+
+		ld a, [PlayerAnimationFrame]
+		add 3
+		ld [PlayerAnimationFrame], a
+		jr .NotPressingDirection
+	:
+
+	; Walking animation
 	ldh a, [KeyDown]
 	and PADF_LEFT | PADF_DOWN | PADF_UP | PADF_RIGHT
 	jr z, .NotPressingDirection
@@ -596,12 +614,18 @@ HorizontalOffsetForPose:
 	enum_elem PLAYER_FRAME_R
 	enum_elem PLAYER_FRAME_R2
 	enum_elem PLAYER_FRAME_R3
+	enum_elem PLAYER_FRAME_R_SHOOT
+	enum_elem PLAYER_FRAME_R_SHOOT2
 	enum_elem PLAYER_FRAME_D
 	enum_elem PLAYER_FRAME_D2
 	enum_elem PLAYER_FRAME_D3
+	enum_elem PLAYER_FRAME_D_SHOOT
+	enum_elem PLAYER_FRAME_D_SHOOT2
 	enum_elem PLAYER_FRAME_U
 	enum_elem PLAYER_FRAME_U2
 	enum_elem PLAYER_FRAME_U3
+	enum_elem PLAYER_FRAME_U_SHOOT
+	enum_elem PLAYER_FRAME_U_SHOOT2
 
 ; ---------------------------------------------------------
 
