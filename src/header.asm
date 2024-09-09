@@ -100,36 +100,17 @@ EntryPoint:
 		ldh [rSVBK], a ; WRAM bank
 .NotGameBoyColor:
 
-	; Turn the screen off for any initialization that needs to be done
+	; It's important to turn audio and rendering off for the speed switch later, to avoid "odd mode"
+	; but it also just makes sense to 
+	xor a
+	ldh [rAUDENA], a
+
+	; Turn the screen off because we're doing setup now
 	call ScreenOff
-
-	; Clear RAM (but not the return address)
-	ld hl, _RAM
-	ld bc, 4096-2
-	call memclear
-
-	ldh a, [IsNotGameBoyColor]
-	or a
-	call nz, detect_sgb
-	ld a, [IsSuperGameBoy]
-	or a
-	call nz, SetupSGB
-
-	call InitParallax
-
-	; Copy in DMA routine
-	ld hl, oam_dma_routine
-	ld de, RunOamDMA
-	ld c, oam_dma_routine_end - oam_dma_routine
-	call memcpy8
 
 	ldh a, [IsNotGameBoyColor]
 	or a
 	jr nz, :+
-		; Make sure audio is off, because speed switching should be done with audio and rendering both disabled, to avoid "odd mode"
-		xor a
-		ldh [rAUDENA], a
-
 		; Switch to double speed mode; see https://gbdev.io/pandocs/CGB_Registers.html#ff4d--key1-cgb-mode-only-prepare-speed-switch
 		xor a
 		ldh [rIE], a
@@ -140,6 +121,33 @@ EntryPoint:
 		stop
 	:
 
+	; Clear half of RAM fast
+	ld hl, _RAM
+	xor a
+:
+	rept 16
+	ld [hl+], a
+	endr
+	bit 4, h   ; Detect going from Cx to Dx
+	jr z, :-
+
+	; Set up Super Game Boy, if present
+	ld a, BANK(detect_sgb)
+	ld [rROMB0], a
+	ldh a, [IsNotGameBoyColor]
+	or a
+	call nz, detect_sgb
+	ld a, [IsSuperGameBoy]
+	or a
+	call nz, SetupSGB ; Sets up a library of palettes and attribute screens, so that the game can just use the PAL_SET command later
+
+	; Copy in DMA routine
+	ld hl, oam_dma_routine
+	ld de, RunOamDMA
+	ld c, oam_dma_routine_end - oam_dma_routine
+	call memcpy8
+
+	; Load in some graphics
 	ld a, BANK(PlayfieldTileset)
 	ld [rROMB0], a
 
@@ -199,6 +207,8 @@ EntryPoint:
 	ld bc, 1234
 	call SeedRandomLCG
 
+	; Start the first level
+	xor a
 	jp StartLevel
 
 SECTION "stat2", ROM0

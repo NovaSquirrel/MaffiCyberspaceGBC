@@ -490,7 +490,7 @@ DrawPlayer::
 	.NotPressingDirection:
 
 	; Flip if left
-	ld b, PALETTE_PLAYER
+	ld b, SP_PALETTE_PLAYER
 	ld a, [DMG_PlayerDrawDirection]
 	cp DIRECTION_LEFT
 	jr nz, :+
@@ -503,7 +503,7 @@ DrawPlayer::
 		ldh [PlayerTile4], a
 		add 2
 		ldh [PlayerTile3], a
-		ld b, OAMF_XFLIP|PALETTE_PLAYER
+		ld b, OAMF_XFLIP|SP_PALETTE_PLAYER
 	:
 
 	; B  = Attribute
@@ -548,7 +548,7 @@ DrawPlayer::
 		:
 		ld [hl+], a ; X position
 
-		ld a, 8 ; Tile
+		ld a, TILE_ID_PLAYER_FACE_RIGHT ; Tile
 		jr FaceSpriteFinish
 	FaceSpriteDown:
 		ld a, e
@@ -558,11 +558,11 @@ DrawPlayer::
 		add 2
 		ld [hl+], a ; X position
 
-		ld a, 10 ; Tile
+		ld a, TILE_ID_PLAYER_FACE_DOWN ; Tile
 	FaceSpriteFinish:
 		ld [hl+], a ; tile number
 		ld a, b
-		dec a
+		dec a       ; use the previous palette but keep the flip
 		ld [hl+], a ; attribute
 	NoFaceSprite:
 

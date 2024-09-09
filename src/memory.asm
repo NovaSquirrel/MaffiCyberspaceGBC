@@ -18,8 +18,8 @@
 include "include/defines.inc"
 
 SECTION "HRAM", HRAM
-seed::  ds 4
-temp1:: ds 1
+seed::  ds 4 ; Random number state
+temp1:: ds 1 ; Local variables
 temp2:: ds 1
 temp3:: ds 1
 temp4:: ds 1
@@ -56,7 +56,7 @@ EnemyCollisionY::      ds 1
 SECTION "BSS", WRAM0
 KeyRepeat::    ds 1
 PlayerDrawDirection:: ds 1
-PlayerAnimationFrame:: ds 1        ; Current wanted fram
+PlayerAnimationFrame:: ds 1        ; Current wanted frame
 PlayerAnimationFrameInVRAM:: ds 1  ; Current frame that's in VRAM
 CameraXPixel:: ds 2
 CameraYPixel:: ds 2
@@ -66,7 +66,9 @@ ParallaxSource:: ds 2
 
 PreviousOAMWrite:: ds 1
 
-PaintAmount::                 ds 1
+LevelID:: ds 1
+
+PaintAmount::                 ds 1 ; The paint bar amount
 PaintAmountShownOnscreen::    ds 1 ; For detecting when to update the bar
 PaintShootDirection::         ds 1 ; 0=right, 1=down right, 2=down, etc.
 PaintShootDiagonalDirection:: ds 1
@@ -124,6 +126,7 @@ ActorExtra::
 	ds 256 ; 16 entries of 16 bytes each - "set 0,h" to get the other variables
 PlayerProjectiles::
 	ds ACTOR_SIZE * PLAYER_PROJECTILE_COUNT
+PlayerProjectilesEnd::
 	ENDU
 
 SECTION "OAM Data", WRAM0, ALIGN[8]

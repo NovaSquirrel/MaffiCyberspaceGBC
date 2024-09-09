@@ -230,11 +230,10 @@ ActorPaintProjectile::
 
 	call RandomByte
 	and OAMF_YFLIP|OAMF_XFLIP
-	or PALETTE_PLAYER
+	or SP_PALETTE_PLAYER
 	ld b, a
-	ld a, $2C
-	call DrawPaintProjectile
-	ret
+	ld a, TILE_ID_PAINT_PROJECTILE
+	jp DrawPaintProjectile
 
 ActorHurtStarProjectile::
 	call ActorApplyVelocity
@@ -253,7 +252,7 @@ ActorHurtStarProjectile::
 	add_hl_a
 	ld c, [hl]
 
-	ld a, $22
+	ld a, TILE_ID_HURT_STAR_PARTICLE
 	ld b, 0
 	jp DrawActor_8x16_YOffset
 
@@ -271,7 +270,7 @@ ActorPoof::
 
 	ld a, [hl]
 	and %1100
-	add $34
+	add TILE_ID_POOF_ANIMATION
 	ld b, 0
 	jp DrawActor_16x16
 
@@ -287,7 +286,7 @@ ActorEnemySpawning::
 		ret
 	:
 
-	ld a, $1E
+	ld a, TILE_ID_ENEMY_SPAWNING
 	ld b, 0
 	jp DrawActor_16x16_Symmetrical
 

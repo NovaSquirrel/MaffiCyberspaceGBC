@@ -3,8 +3,10 @@ DEF DIRECTION_DOWN  EQU 1
 DEF DIRECTION_LEFT  EQU 2
 DEF DIRECTION_UP    EQU 3
 
-DEF PALETTE_FACE    EQU 6
-DEF PALETTE_PLAYER  EQU 7
+DEF SP_PALETTE_FACE    EQU 6
+DEF SP_PALETTE_PLAYER  EQU 7
+
+DEF BG_PALETTE_STATUS EQU 7
 
 DEF DIRECTION8_EAST      EQU 0
 DEF DIRECTION8_SOUTHEAST EQU 1
@@ -109,6 +111,16 @@ DEF PlayerProjectiles_var1 EQUS "(PlayerProjectiles + actor_var1)"
 DEF PlayerProjectiles_var2 EQUS "(PlayerProjectiles + actor_var2)"
 DEF PlayerProjectiles_var3 EQUS "(PlayerProjectiles + actor_var3)"
 DEF PlayerProjectiles_var4 EQUS "(PlayerProjectiles + actor_var4)"
+
+; .----------------------------------------------------------------------------
+; | Tile numbers
+; '----------------------------------------------------------------------------
+DEF TILE_ID_PAINT_PROJECTILE EQU $2C
+DEF TILE_ID_HURT_STAR_PARTICLE EQU $22
+DEF TILE_ID_POOF_ANIMATION EQU $34
+DEF TILE_ID_ENEMY_SPAWNING EQU $1E
+DEF TILE_ID_PLAYER_FACE_RIGHT EQU 8
+DEF TILE_ID_PLAYER_FACE_DOWN EQU 10
 
 ; .----------------------------------------------------------------------------
 ; | Game-specific macros

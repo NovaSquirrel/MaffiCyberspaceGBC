@@ -1,5 +1,5 @@
 ; Maffi cyberspace game
-; Copyright (C) 2022 NovaSquirrel
+; Copyright (C) 2022-2024 NovaSquirrel
 ;
 ; This program is free software: you can redistribute it and/or
 ; modify it under the terms of the GNU General Public License as
@@ -16,9 +16,10 @@
 ;
 
 include "include/macros.inc"
+include "include/leveldata.inc"
 include "res/block_enum.inc"
 
-SECTION "Maze", ROM0
+SECTION "Maze Generation", ROM0
 
 def FLOOD_VISITED = 128
 

@@ -26,37 +26,15 @@ SECTION "MainLoop", ROM0
 
 ; -----------------------------------------------------------------------------
 
-;PlayerAnimationFrame
-
-StartLevel::
-	call GenerateMaze
-
+StartMainLoop::
 	; Initialize actor data
 	ld hl, ActorData
-	ld bc, 512
+	ld bc, PlayerProjectilesEnd - ActorData
 	call memclear
 
-	; Test enemy
-	;ld a, ActorType_EnemySpawning
-	;ld [ActorData], a
-	;ld a, 36
-	;ld [ActorData + actor_pyh], a
-	;ld [ActorData + actor_pxh], a
-	;ld a, $80
-	;ld [ActorData + actor_pyl], a
-	;ld [ActorData + actor_pxl], a
-	;ld [ActorData + actor_pyl + ACTOR_SIZE], a
-	;ld [ActorData + actor_pxl + ACTOR_SIZE], a
-	;ld a, $10
-	;ld [ActorData + actor_health], a
-	;ld [ActorData + actor_health + ACTOR_SIZE], a
-
-	;ld a, ActorType_EnemySpawning
-	;ld [ActorData + ACTOR_SIZE], a
-	;ld a, 28
-	;ld [ActorData + actor_pyh + ACTOR_SIZE], a
-	;ld [ActorData + actor_pxh + ACTOR_SIZE], a
-
+	; .----------------------------------------------------
+	; | Initialize registers
+	; '----------------------------------------------------
 	ld a, 7
 	ldh [rWX], a ; X position + 7, so 7 is writing 0
 	ld a, 144-8
@@ -68,6 +46,9 @@ StartLevel::
 	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJOFF|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00|LCDCF_WINON
 	ldh [LYC_Interrupt_LCDC], a
 
+	; .----------------------------------------------------
+	; | Initialize gameplay variables
+	; '----------------------------------------------------
 	ld a, 255
 	ld hl, PaintAmount
 	ld [hl+], a ; PaintAmount
@@ -79,8 +60,35 @@ StartLevel::
 	ld [hl+], a ; PaintShotID
 	ld [hl+], a ; PlayerShootDiagonalTimer
 	ld [hl+], a ; PlayerShootingTimer
+	ld [PaintRefillCooldown], a
+	ld [PlayerDrawDirection], a
+	ld [DMG_PlayerAnimationFrame_Page], a
+	ld [PreviousOAMWrite], a
 
-	; Clear all of OAM
+	ld a, 32
+	ldh [PlayerPXH], a
+	ldh [PlayerPYH], a
+
+	; .----------------------------------------------------
+	; | Initialize non-gameplay state
+	; '----------------------------------------------------
+	ld a, 255
+	ld [DoUpdateRow], a
+	ld [DoUpdateColumn], a
+	xor a
+	ld [PlayerAnimationFrame], a
+	ldh [OAMWrite], a
+	dec a
+	ld [PlayerAnimationFrameInVRAM], a ; Initialize it with -1 so it'll get sent no matter what
+
+	ld a, LOW(ParallaxShifts)
+	ld [ParallaxSource+0], a
+	ld a, HIGH(ParallaxShifts)
+	ld [ParallaxSource+1], a
+
+	; .----------------------------------------------------
+	; | Clear OAM
+	; '----------------------------------------------------
 	ld hl, OamBuffer
 	ld c, 0
 	call memclear8
@@ -96,27 +104,7 @@ StartLevel::
 		call memclear8
 	:
 
-Gameplay::
-; -------------------------------------------------------------------------
-; Main loop
-	ld a, 32
-	ldh [PlayerPXH], a
-	ldh [PlayerPYH], a
-	ld a, 255
-	ld [DoUpdateRow], a
-	ld [DoUpdateColumn], a
-	xor a
-	ld [PlayerAnimationFrame], a
-	ldh [OAMWrite], a
-	dec a
-	ld [PlayerAnimationFrameInVRAM], a ; Initialize it with -1 so it'll get sent no matter what
-
-	ld a, LOW(ParallaxShifts)
-	ld [ParallaxSource+0], a
-	ld a, HIGH(ParallaxShifts)
-	ld [ParallaxSource+1], a
-
-	; Status bar
+	; Set up the initial status bar
 	ld hl, _SCRN1
 	ld a, $f0
 	ld c, 20
@@ -135,6 +123,7 @@ Gameplay::
 	ld c, 4
 	call memset8
 
+	; On Game Boy Color, set the palette of the status bar
 	ldh a, [IsNotGameBoyColor]
 	or a
 	jr nz, :+
@@ -148,8 +137,8 @@ Gameplay::
 		ldh [rVBK], a
 	:
 
+	; Set initial camera view, and render all the tiles that should be visible
 	call InitCamera
-
 	ld a, BANK(RenderLevelScreen)
 	ld [rROMB0], a
 	call RenderLevelScreen

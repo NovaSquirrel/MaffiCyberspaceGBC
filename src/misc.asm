@@ -63,22 +63,20 @@ joypad::
   reti
 
 memclear::
-  xor a
-  ld [hl+], a
-  dec bc
-  ld a,b
-  or c
-  jr nz, memclear
-  ret
-
+	xor a
 memset::
-  ld a, e
-  ld [hl+], a
-  dec bc
-  ld a, b
-  or c
-  jr nz, memset
-  ret
+    ; Increment B if C is non-zero
+    dec bc
+    inc b
+    inc c
+.loop
+    ld [hl+], a
+    inc de
+    dec c
+    jr nz, .loop
+    dec b
+    jr nz, .loop
+	ret
 
 memcpy::
     ; Increment B if C is non-zero
@@ -96,29 +94,29 @@ memcpy::
     ret
 
 memcpy8::
-  ld a, [hl+]
-  ld [de], a
-  inc de
-  dec c
-  jr nz, memcpy8
-  ret
+	ld a, [hl+]
+	ld [de], a
+	inc de
+	dec c
+	jr nz, memcpy8
+	ret
 
 memclear8::
-  xor a
+	xor a
 memset8::
-  ld [hl+], a
-  dec c
-  jr nz, memset8
-  ret
+	ld [hl+], a
+	dec c
+	jr nz, memset8
+	ret
 
 strcpy:
-  ld a, [hl+]
-  or a
-  ret z
-  ld [de], a
-  inc de
-  jr strcpy
-  ret
+	ld a, [hl+]
+	or a
+	ret z
+	ld [de], a
+	inc de
+	jr strcpy
+	ret
 
 ReadKeys::
   ldh a, [KeyDown]

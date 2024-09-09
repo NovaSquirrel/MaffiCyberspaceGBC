@@ -58,7 +58,7 @@ section "sgbwram", WRAM0
 sgb_cmd_buf:: ds 16
 IsSuperGameBoy:: ds 1
 
-section "sgbcode", ROM0
+section "Super Game Boy", ROMX
 
 ; Reads the controller but doesn't do anything with it
 read_pad_and_discard:
@@ -528,17 +528,9 @@ SetupSGB::
 	ld b, 0
 	call sgb_send_trn_ab
 
-	; Set the palettes and attribute screen
-	ld b, 0
-	ld c, 1
-	ld d, 2
-	ld e, 3
-	ld a, %11000001
-	call sgb_set_palettes_bcde_attr_a
-
 	jp lcd_off_busywait
 
-section "sgb_palettes", ROM0
+; -----------------------------------------------
 
 sgb_cmd_clear_attrs::
 	db SGB_COMMAND_ATTR_BLK*8+1  ; 1 packet holds up to 2 rectangles
@@ -552,7 +544,7 @@ sgb_cmd_clear_attrs::
 
 ;--------------------------------------
 sgb_palettes:
-	; Main
+	; Green main
 	rgb 31, 31, 31
 	rgb $59/8, $cf/8, $93/8
 	rgb $6a/8, $88/8, $e9/8
@@ -574,6 +566,66 @@ sgb_palettes:
 	rgb 31, 31, 31
 	rgb $e2/8,$72/8,$85/8
 	rgb $b2/8,$52/8,$66/8
+	rgb 0, 0, 0
+
+	; Red main
+	rgb 31, 31, 31
+	rgb $e2/8, $72/8, $85/8 ;$19, $0b, $0b
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Cyan main (Icy, bright)
+	rgb 31, 31, 31
+	rgb $00, $1f, $1f
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Teal main (Not super bright)
+	rgb 31, 31, 31
+	rgb $0b, $1b, $1d
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Magenta main
+	rgb 31, 31, 31
+	rgb $1f, $0c, $19
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Lime main
+	rgb 31, 31, 31
+	rgb $11, $1f, $00
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Gray main
+	rgb 31, 31, 31
+	rgb $19, $18, $18
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Lavender main
+	rgb 31, 31, 31
+	rgb $1C, $19, $1F
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Pink main
+	rgb 31, 31, 31
+	rgb $1F, $12, $17
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Sand main
+	rgb 31, 31, 31
+	rgb $1C, $1A, $11
+	rgb $6a/8, $88/8, $e9/8
+	rgb 0, 0, 0
+
+	; Bright magenta/red
+	rgb 31, 31, 31
+	rgb $f9/8, $5e/8, $90/8
+	rgb $6a/8, $88/8, $e9/8
 	rgb 0, 0, 0
 sgb_palettes_end:
 
