@@ -26,26 +26,91 @@ def FLOOD_VISITED = 128
 def FloodFillReadIndex  equs "temp1"
 def FloodFillWriteIndex equs "temp2"
 def RectFillValue       equs "temp3"
+def CurrentTileValue    equs "temp8"
 
-GenerateMaze::
-	; Clear the playfield first
-	ld hl, Playfield
-:	xor a
-	rept 8
-	ld [hl+], a
-	endr
-	ld a, h
-	cp HIGH(PlayfieldEnd)
-	jr nz, :-
+; .--------------------------------------------------------
+; | Runs through all of the commands in a level
+; | HL = Level pointer
+; '--------------------------------------------------------
+LoadLevel::
+	; Default settings
+	ld a, LEVEL_AREA_1
+	ldh [CurrentTileValue], a
 
-	; Create a big space to put walls on
-	ld a, BlockType_Floor
-	ld b, 56
-	ld c, 56
-	ld d, 4
-	ld e, 4
+; Process each level command
+LoadLevelLoop:
+	ld a, [hl+]
+	ld d, h ; Save HL temporarily
+	ld e, l
+
+	ld hl, LoadLevelCommands
+	add_hl_a
+	ld a, [hl+]
+	ld h, [hl]
+	ld l, a
+	push hl
+
+	ld h, d ; Restore HL
+	ld l, e
+	ret     ; Jump to the handler
+
+; .--------------------------------------------------------
+; | Level load command handlers
+; '--------------------------------------------------------
+LoadLevelCommands:
+	dw LevelCommand_End
+	dw LevelCommand_Type
+	dw LevelCommand_Rect
+	dw LevelCommand_Single
+	dw LevelCommand_FillPlaceholders
+
+; ---------------------------------------------------------
+
+LevelCommand_End:
+	ret ; All done!
+
+; ---------------------------------------------------------
+
+LevelCommand_Type:
+	ld a, [hl+]
+	ldh [CurrentTileValue], a
+	jp LoadLevelLoop
+
+; ---------------------------------------------------------
+
+LevelCommand_Rect:
+	ld a, [hl+] ; x
+	ld d, a
+	ld a, [hl+] ; y
+	ld e, a
+	ld a, [hl+] ; w
+	ld b, a
+	ld a, [hl+] ; h
+	ld c, a
+	push hl
+	ldh a, [CurrentTileValue]
 	call RectFill
+	pop hl
+	jp LoadLevelLoop
 
+; ---------------------------------------------------------
+
+LevelCommand_Single:
+	ld a, [hl+] ; x
+	ld d, a
+	ld a, [hl+] ; x
+	ld e, a
+	push hl
+	call MapPointerDE_XY
+	ldh a, [CurrentTileValue]
+	ld [hl], a 
+	pop hl
+	jp LoadLevelLoop
+
+; ---------------------------------------------------------
+
+LevelCommand_FillPlaceholders:
+	push hl
 	; -----------------------------------------------------
 	; Add walls to the ground tiles that were placed
 	; -----------------------------------------------------
@@ -56,8 +121,10 @@ GenerateMaze::
 AddWalls:
     ; Don't try to place walls in the void
 	ld a, [hl]
-	or a
-	jr z, .skip
+	cp LEVEL_AREA_1
+	jr c, .skip
+
+	; TODO: write code to differentiate the different kinds of placeholders!
 
 	; Skip this wall?
 	call RandomByte
@@ -90,6 +157,7 @@ NextColumn:
 	; Flood fill time
 	; -----------------------------------------------------
 
+	; TODO: use the actual starting location!!
 	ld d, 10
 	ld e, 10
 	call MapPointerDE_XY
@@ -101,20 +169,27 @@ NextColumn:
 	; -----------------------------------------------------
 
 	; Try it forward
-
 	ld hl, Playfield
 FixMazeForward:
 	rept 4
 	ld a, [hl+]
-	dec a ; Test for 1 (which is BlockType_Floor)
-	jr nz, :+
+	add a ; Check visited bit, and check for void
+	jr z, .skip
+	jr c, .skip
+
+	rrca ; Undo shifting left
+	ld d, HIGH(BlockFlags)
+	ld e, a
+	ld a, [de]
+	bit 6, a ; Is this block visitable, but it wasn't visited?
+	jr z, :+
 		push hl
 		call FixUnvisitedFloor
 		pop hl
 	:
 	endr
-	ld a, h
-	cp HIGH(PlayfieldEnd)
+.skip
+	bit 4, h ; Will be 0 at PlayfieldEnd
 	jr nz, FixMazeForward
 
 	; Try it backward too
@@ -123,19 +198,28 @@ FixMazeForward:
 FixMazeBackward:
 	rept 4
 	ld a, [hl-]
-	dec a ; Test for 1 (which is BlockType_Floor)
-	jr nz, :+
+	add a ; Check visited bit, and check for void
+	jr z, .skip
+	jr c, .skip
+
+	rrca ; Undo shifting left
+	ld d, HIGH(BlockFlags)
+	ld e, a
+	ld a, [de]
+	bit 6, a ; Is this block visitable, but it wasn't visited?
+	jr z, :+
 		push hl
 		call FixUnvisitedFloor
 		pop hl
 	:
 	endr
-	ld a, h
-	cp HIGH(Playfield-1)
+.skip:
+	bit 4, h ; Will be 0 at Playfield-1
 	jr nz, FixMazeBackward
 
 	; -----------------------------------------------------
 	; Has the maze been fixed well enough?
+	; Also apply autotiling
 	; -----------------------------------------------------
 
 	ld hl, Playfield
@@ -144,16 +228,38 @@ FixMazeBackward:
 CountVisitedUnvisited:
 	ld a, [hl+]
 	or a
-	jr nz, :+
-		bit 5, h ; Will be 1 at PlayfieldEnd
-		jr z, CountVisitedUnvisited
+	jr nz, :+ ; If it's void, just skip it
+		; Check if we're past the end
+		bit 4, h ; Will be 1 at PlayfieldEnd
+		jr nz, CountVisitedUnvisited
 		jr .done
 	:
-	dec hl ; undo the [hl+]
-	res 7, [hl] ; Clear "visited" flag here
-	cp BlockType_Wall
+	dec hl ; undo the hl+
 
-	jr nz, :+
+	; Count tiles that haven't been visited
+	cp BlockType_Floor
+	jr z, .NotVisited
+	sub LEVEL_AREA_1
+	cp 8
+	jr nc, :+
+	.NotVisited:
+		inc bc
+	:
+
+	res 7, [hl] ; Clear "visited" flag
+
+	; Autotile the walls
+	ld a, [hl]
+	cp LEVEL_AREA_1 ; Fill in the placeholders
+	jr c, .NotPlaceholder
+		ld [hl], BlockType_Floor
+
+		; TODO: write code to differentiate the different kinds of placeholders!
+
+		jr .next
+	.NotPlaceholder:
+	cp BlockType_Wall
+	jr nz, .NotWall
 		push bc
 		push hl
 		ld c, 0 ; Walls
@@ -175,23 +281,22 @@ CountVisitedUnvisited:
 		add c
 		ld [hl], a
 		pop bc
-		jr .skip
-	:
-	dec a ; Test for 1
-	jr nz, :+
-		inc bc ; Add a non-visited floor
-	:
+		jr .next
+	.NotWall:
 	;add a,a
 	;jr nc, :+
 	;	inc de ; Add a visited floor
 	;:
-.skip:
+.next:
 	inc hl
 	ld a, h
 	bit 5, h ; Will be 1 at PlayfieldEnd
 	jr z, CountVisitedUnvisited
 .done:
-	ret
+
+	SkipMe2:
+	pop hl
+	jp LoadLevelLoop
 
 ; -----------------------------------------------------------------------------
 
@@ -208,6 +313,7 @@ IsWallAutotile:
 	rl c
 	ret
 
+; -----------------------------------------------------------------------------
 ; Try to fix a floor tile that wasn't reached by connecting it to a visited tile 2 tiles away
 FixUnvisitedFloor:
 	; Use a different order sometimes to mix things up
@@ -271,23 +377,25 @@ FixUnvisitedFloor:
 
 .fix_left:
 	inc l
-	ld [hl], BlockType_Floor
+	ld [hl], BlockType_Floor | 128
 	jp FloodFillPlayfield
 .fix_right:
 	dec l
-	ld [hl], BlockType_Floor
+	ld [hl], BlockType_Floor | 128
 	jp FloodFillPlayfield
 .fix_down:
 	ld de, -64
 	add hl, de
-	ld [hl], BlockType_Floor
+	ld [hl], BlockType_Floor | 128
 	jp FloodFillPlayfield
 .fix_up:
 	ld de, 64
 	add hl, de
-	ld [hl], BlockType_Floor
+	ld [hl], BlockType_Floor | 128
 	jp FloodFillPlayfield
 
+
+; ---------------------------------------------------------
 ; Add a wall at [HL] and put a block in a random direction
 AddWallHere:
 	; Place a wall at [HL]
@@ -330,10 +438,11 @@ AddWallHere:
 	ret
 
 
+; ---------------------------------------------------------
 ; HL = Playfield position
 ; DE = Queue pointer
 FloodFillAddToQueue:
-	set 7, [hl]
+	set 7, [hl] ; Mark as visited
 
 	; Write to the queue
 	ld a, h
@@ -350,10 +459,11 @@ FloodFillAddToQueue:
 	ldh a, [FloodFillReadIndex]
 	cp e
 	ret nz
-	ld b,b
+	ld b,b ; Breakpoint, because this is a problem!!
 	ret
 
 
+; ---------------------------------------------------------
 ; HL = Playfield position
 FloodFillPlayfield:
 	xor a
@@ -362,15 +472,15 @@ FloodFillPlayfield:
 	ldh [FloodFillWriteIndex], a ; Will be 1 after the first byte is written
 
 	ld de, FloodQueueHi          ; D will point at FloodQueueHi and FloodQueueLo
-	call FloodFillAddToQueue     ; Start off the buffer with the initial position
+	call FloodFillAddToQueue     ; Start off the buffer with the initial position (passed in with HL)
 	ld e, 0                      ; Go into the loop reading the first byte
 
 .loop:
 	; Read pointer from the queue
-	ld a, [de]
+	ld a, [de] ; High half
 	ld h, a
 	inc d
-	ld a, [de]
+	ld a, [de] ; Low half
 	ld l, a
 	dec d
 
@@ -382,15 +492,27 @@ FloodFillPlayfield:
 	; Left
 	dec l
 	ld a, [hl]
-	cp BlockType_Floor
-	call z, FloodFillAddToQueue
+	bit 7, a     ; Already visited?
+	jr nz, :+
+		ld b, HIGH(BlockFlags)
+		ld c, a
+		ld a, [bc]
+		bit 6, a ; Is this block visitable?
+		call nz, FloodFillAddToQueue
+	:
 	inc l
 
 	; Right
 	inc l
 	ld a, [hl]
-	cp BlockType_Floor
-	call z, FloodFillAddToQueue
+	bit 7, a     ; Already visited?
+	jr nz, :+
+		ld b, HIGH(BlockFlags)
+		ld c, a
+		ld a, [bc]
+		bit 6, a ; Is this block visitable?
+		call nz, FloodFillAddToQueue
+	:
 	dec l
 
 	; Up
@@ -399,16 +521,28 @@ FloodFillPlayfield:
 	ld bc, -64
 	add hl, bc
 	ld a, [hl]
-	cp BlockType_Floor
-	call z, FloodFillAddToQueue
+	bit 7, a     ; Already visited?
+	jr nz, :+
+		ld b, HIGH(BlockFlags)
+		ld c, a
+		ld a, [bc]
+		bit 6, a ; Is this block visitable?
+		call nz, FloodFillAddToQueue
+	:
 	pop hl
 
 	; Down
 	ld bc, 64
 	add hl, bc
 	ld a, [hl]
-	cp BlockType_Floor
-	call z, FloodFillAddToQueue
+	bit 7, a     ; Already visited?
+	jr nz, :+
+		ld b, HIGH(BlockFlags)
+		ld c, a
+		ld a, [bc]
+		bit 6, a ; Is this block visitable?
+		call nz, FloodFillAddToQueue
+	:
 	pop hl
 
 	; Write the new write index
@@ -426,6 +560,8 @@ FloodFillPlayfield:
 
 	ret
 
+
+; ---------------------------------------------------------
 ; Inputs: A(Type), B(Width), C(Height), D(X), E(Y)
 RectFill:
 	ldh [RectFillValue], a

@@ -16,6 +16,7 @@
 ;
 
 include "include/hardware.inc/hardware.inc"
+include "include/leveldata.inc"
 
 SECTION "Level Load", ROM0
 
@@ -35,8 +36,10 @@ StartLevel::
 
 	call InitParallax
 
-	call GenerateMaze
+	ld hl, TestLevel
+	call LoadLevel
 
+	;---------------------------------------
 	; Set the palettes and attribute screen
 	ld a, [IsSuperGameBoy]
 	or a
@@ -55,3 +58,7 @@ StartLevel::
 
 SECTION "Level Data", ROMX
 
+TestLevel:
+	db LC_RECT, 4, 4, 56, 56
+	db LC_FILL_PLACEHOLDERS
+	db LC_END

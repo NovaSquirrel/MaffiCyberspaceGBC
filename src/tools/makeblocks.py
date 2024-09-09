@@ -110,7 +110,7 @@ for line in text:
 		saveBlock()
 		# Reset to prepare for the new block
 		priority = False
-		block = {"name": line[1:], "solid": False, \
+		block = {"name": line[1:], "solid": False, "visitable": False, \
 		  "tiles": [], "interaction": {}, "class": "None"}
 		continue
 	word, arg = separateFirstWord(line)
@@ -141,8 +141,8 @@ for line in text:
 		all_classes.add(arg)
 
 	# Specifying tiles and tile attributes
-	elif word == "solid":
-		block["solid"] = True
+	elif word in ["solid", "visitable"]:
+		block[word] = True
 	elif word == "priority":
 		priority = True
 	elif word == "no_priority":
@@ -207,8 +207,8 @@ else:
 
 outfile.write('BlockFlags::\n')
 for b in all_blocks:
-	outfile.write('\tdb $%x|BlockClass_%s ; %s\n' % \
-	  (b['solid'] * 0x80, b['class'], b['name']))
+	outfile.write('\tdb $%x|$%x|BlockClass_%s ; %s\n' % \
+	  (b['solid'] * 0x80, b['visitable'] * 0x40, b['class'], b['name']))
 
 if PAGE_ALIGN_BLOCK_INTERACTION:
 	outfile.write('\nSECTION FRAGMENT "%s", %s, ALIGN[8]\n\n' % (SECTION_NAME_INTERACTION, SECTION_TYPE_INTERACTION))

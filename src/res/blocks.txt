@@ -23,6 +23,7 @@ palette terrain_palette
 
 +Floor
 w 0,2
+visitable
 
 palette wall_palette
 
@@ -112,11 +113,13 @@ t 9,0 8,0
 +Bricks
 palette blue_palette
 solid
+visitable
 w 0,3
 
 +BricksCracked
 palette blue_palette
 solid
+visitable
 w 4,3
 
 +PrizeAnimation1
@@ -136,6 +139,7 @@ w 12,1
 
 +Paint
 palette purple_palette
+visitable
 w 0,6
 
 #######################################
@@ -148,21 +152,25 @@ marker SpecialFloor
 +Star
 palette terrain_palette
 When Above, RunBlockStar
+visitable
 w 4,2
 
 +Heart
 palette terrain_palette
 When Above, RunBlockHeart
+visitable
 w 8,2
 
 +Dot
 palette terrain_palette
 When Above, RunBlockDot
+visitable
 w 12,2
 
 +Key
 palette purple_palette
 When Above, RunBlockKey
+visitable
 w 8,4
 
 marker EndCollectible
@@ -170,21 +178,25 @@ marker EndCollectible
 +Teleporter
 palette blue_palette
 When Above, RunBlockTeleporter
+visitable
 w 8,3
 
 +Exit
 palette blue_palette
 When Above, RunBlockExit
+visitable
 w 12,3
 
 +Spring
 palette blue_palette
 When Above, RunBlockSpring
+visitable
 w 0,4
 
 +ToggleButton
 palette purple_palette
 When Above, RunBlockToggleButton
+visitable
 w 4,5
 
 +Fire
@@ -218,3 +230,46 @@ solid
 w 0,1
 
 marker EndSpecialWall
+
+###############################################
+# Placeholder tiles (place these at the end!)
+###############################################
++PlaceholderArea1
+visitable
+t 0,0 0,0
+t 0,0 0,0
+
++PlaceholderArea2
+visitable
+t 0,0 0,0
+t 0,0 0,0
+
++PlaceholderArea3
+visitable
+t 0,0 0,0
+t 0,0 0,0
+
++PlaceholderArea4
+visitable
+t 0,0 0,0
+t 0,0 0,0
+
++PlaceholderArea5
+visitable
+t 0,0 0,0
+t 0,0 0,0
+
++PlaceholderArea6
+visitable
+t 0,0 0,0
+t 0,0 0,0
+
++PlaceholderArea7
+visitable
+t 0,0 0,0
+t 0,0 0,0
+
++PlaceholderArea8
+visitable
+t 0,0 0,0
+t 0,0 0,0
