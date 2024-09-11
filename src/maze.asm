@@ -119,6 +119,8 @@ LevelCommand_FillPlaceholders:
 	ld a, $c3 ; JP
 	ld [PlaceholderPointers_AddWalls+4*0], a
 	ld [PlaceholderPointers_AddWalls+4*1], a
+	ld [PlaceholderPointers_AddFloors+4*0], a
+	ld [PlaceholderPointers_AddFloors+4*1], a
 
 	ld a, LOW(WallChance75Percent)
 	ld [PlaceholderPointers_AddWalls+4*0+1], a
@@ -129,6 +131,16 @@ LevelCommand_FillPlaceholders:
 	ld [PlaceholderPointers_AddWalls+4*1+1], a
 	ld a, HIGH(WallChance93Percent)
 	ld [PlaceholderPointers_AddWalls+4*1+2], a
+
+	ld a, LOW(FloorNormal)
+	ld [PlaceholderPointers_AddFloors+4*0+1], a
+	ld a, HIGH(FloorNormal)
+	ld [PlaceholderPointers_AddFloors+4*0+2], a
+
+	ld a, LOW(FloorStar)
+	ld [PlaceholderPointers_AddFloors+4*1+1], a
+	ld a, HIGH(FloorStar)
+	ld [PlaceholderPointers_AddFloors+4*1+2], a
 
 	ld de, Playfield+64+1
 AddWalls:
@@ -182,7 +194,9 @@ NextColumn:
 	; Fix unsolveable mazes
 	; -----------------------------------------------------
 
+	; ---------------------------------
 	; Try it forward
+
 	ld hl, Playfield
 FixMazeForward:
 	rept 4
@@ -207,6 +221,7 @@ FixMazeForward:
 	bit 4, h ; Will be 0 at PlayfieldEnd
 	jr nz, FixMazeForward
 
+	; ---------------------------------
 	; Try it backward too
 
 	ld hl, PlayfieldEnd-1
@@ -235,7 +250,7 @@ FixMazeBackward:
 
 	; -----------------------------------------------------
 	; Has the maze been fixed well enough?
-	; Also apply autotiling
+	; Also apply autotiling, and add items to the floor
 	; -----------------------------------------------------
 
 	ld hl, Playfield
@@ -248,7 +263,7 @@ CountVisitedUnvisited:
 		; Check if we're past the end
 		bit 4, h ; Will be 1 at PlayfieldEnd
 		jr nz, CountVisitedUnvisited
-		jr .done
+		jr ReturnFromAddFloors.done
 	:
 	dec hl ; undo the hl+
 
@@ -266,15 +281,17 @@ CountVisitedUnvisited:
 
 	; Autotile the walls
 	ld a, [hl]
-	cp LEVEL_AREA_1 ; Fill in the placeholders
+	sub LEVEL_AREA_1 ; Fill in the placeholders
 	jr c, .NotPlaceholder
-		ld [hl], BlockType_Floor
-
-		; TODO: write code to differentiate the different kinds of placeholders!
-
-		jr .next
+		add a ; Multiply by 4 because it's slightly faster than multiplying by 3
+		add a
+		assert LOW(PlaceholderPointers_AddFloors) == 0 
+		ld d, HIGH(PlaceholderPointers_AddFloors)
+		ld e, a
+		push de
+		ret
 	.NotPlaceholder:
-	cp BlockType_Wall
+	cp BlockType_Wall-LEVEL_AREA_1
 	jr nz, .NotWall
 		push bc
 		push hl
@@ -304,6 +321,7 @@ CountVisitedUnvisited:
 	;	inc de ; Add a visited floor
 	;:
 .next:
+ReturnFromAddFloors:
 	inc hl
 	ld a, h
 	bit 5, h ; Will be 1 at PlayfieldEnd
@@ -410,6 +428,14 @@ FixUnvisitedFloor:
 	ld [hl], BlockType_Floor | 128
 	jp FloodFillPlayfield
 
+
+; ---------------------------------------------------------
+FloorNormal:
+	ld [hl], BlockType_Floor
+	jp ReturnFromAddFloors
+FloorStar:
+	ld [hl], BlockType_Star
+	jp ReturnFromAddFloors
 
 ; ---------------------------------------------------------
 WallChance25Percent:

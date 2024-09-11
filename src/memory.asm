@@ -122,9 +122,9 @@ FloodQueueLo::
 	ds 256
 ; These will be aligned to the start of a page
 PlaceholderPointers_AddFloors::
-	ds 8*2
+	ds 8*4
 PlaceholderPointers_AddWalls::
-	ds 8*3
+	ds 8*4
 
 	NEXTU
 ; Gameplay mode
