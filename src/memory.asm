@@ -120,6 +120,12 @@ ActorData::
 ; Flood fill mode
 FloodQueueLo::
 	ds 256
+; These will be aligned to the start of a page
+PlaceholderPointers_AddFloors::
+	ds 8*2
+PlaceholderPointers_AddWalls::
+	ds 8*3
+
 	NEXTU
 ; Gameplay mode
 ActorExtra::

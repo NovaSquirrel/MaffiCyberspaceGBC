@@ -115,39 +115,53 @@ LevelCommand_FillPlaceholders:
 	; Add walls to the ground tiles that were placed
 	; -----------------------------------------------------
 
-	ld hl, Playfield+64+1
-    ; B is free for another parameter
-	ld c, 64 ; Wall chance
+	; Hardcode some pointers for now
+	ld a, $c3 ; JP
+	ld [PlaceholderPointers_AddWalls+4*0], a
+	ld [PlaceholderPointers_AddWalls+4*1], a
+
+	ld a, LOW(WallChance75Percent)
+	ld [PlaceholderPointers_AddWalls+4*0+1], a
+	ld a, HIGH(WallChance75Percent)
+	ld [PlaceholderPointers_AddWalls+4*0+2], a
+
+	ld a, LOW(WallChance93Percent)
+	ld [PlaceholderPointers_AddWalls+4*1+1], a
+	ld a, HIGH(WallChance93Percent)
+	ld [PlaceholderPointers_AddWalls+4*1+2], a
+
+	ld de, Playfield+64+1
 AddWalls:
-    ; Don't try to place walls in the void
-	ld a, [hl]
-	cp LEVEL_AREA_1
-	jr c, .skip
-
-	; TODO: write code to differentiate the different kinds of placeholders!
-
-	; Skip this wall?
-	call RandomByte
-	cp c
-	call nc, AddWallHere
-.skip:
+    ; Don't try to place walls in the void, or anything else that's not a placeholder area
+	ld a, [de]
+	sub LEVEL_AREA_1
+	jr c, ReturnFromAddWalls
+		; Jump to the wall placement function for that specific level area
+		add a ; Multiply by 4 because it's slightly faster than multiplying by 3
+		add a
+		add PlaceholderPointers_AddWalls-PlaceholderPointers_AddFloors
+		assert LOW(PlaceholderPointers_AddFloors) == 0 
+		ld h, HIGH(PlaceholderPointers_AddWalls)
+		ld l, a
+		jp hl
+	ReturnFromAddWalls:
     ; Move down two rows
-	ld a, l
+	ld a, e
 	add %10000000
-	ld l, a
+	ld e, a
 	jr nc, :+
-		inc h
-		; Did it move past the end?
-		ld a, h
-		cp HIGH(PlayfieldEnd)
-		jr nc, NextColumn
+		inc d
+		bit 4, d ; Will be 0 at PlayfieldEnd
+		jr z, NextColumn
 	:
     ; Keep going on the same column
 	jr AddWalls
 NextColumn:
     ; Go back 64 rows and move over 2 to the right
-	ld de, -(64*64)+2
+	ld hl, -(64*64)+2
 	add hl, de
+	ld d, h
+	ld e, l
 	ld a, l
     ; Stop at 61 tiles to the right
 	cp 61+64
@@ -184,6 +198,7 @@ FixMazeForward:
 	bit 6, a ; Is this block visitable, but it wasn't visited?
 	jr z, :+
 		push hl
+		dec l
 		call FixUnvisitedFloor
 		pop hl
 	:
@@ -209,6 +224,7 @@ FixMazeBackward:
 	bit 6, a ; Is this block visitable, but it wasn't visited?
 	jr z, :+
 		push hl
+		dec l
 		call FixUnvisitedFloor
 		pop hl
 	:
@@ -396,9 +412,32 @@ FixUnvisitedFloor:
 
 
 ; ---------------------------------------------------------
+WallChance25Percent:
+	call RandomByte
+	cp 192
+	call nc, AddWallHere
+	jp ReturnFromAddWalls
+WallChance50Percent:
+	call RandomByte
+	cp 128
+	call nc, AddWallHere
+	jp ReturnFromAddWalls
+WallChance75Percent:
+	call RandomByte
+	cp 64
+	call nc, AddWallHere
+	jp ReturnFromAddWalls
+WallChance93Percent:
+	call RandomByte
+	cp 16
+	call nc, AddWallHere
+	jp ReturnFromAddWalls
+
 ; Add a wall at [HL] and put a block in a random direction
 AddWallHere:
 	; Place a wall at [HL]
+	ld h, d
+	ld l, e
 	ld [hl], BlockType_Wall
 
 	; Choose a direction to go from here
@@ -414,21 +453,17 @@ AddWallHere:
 	dec a
 	jr nz, .notUp
 	; A = 1 : Up
-	push hl
-	ld de, -64
-	add hl, de
+	ld bc, -64
+	add hl, bc
 	ld [hl], BlockType_Wall
-	pop hl
 	ret
 .notUp:
 	dec a
 	jr nz, .notDown
 	; A = 2 : Down
-	push hl
-	ld de, 64
-	add hl, de
+	ld bc, 64
+	add hl, bc
 	ld [hl], BlockType_Wall
-	pop hl
 	ret
 .notDown:
 	; A = 3 : Right
