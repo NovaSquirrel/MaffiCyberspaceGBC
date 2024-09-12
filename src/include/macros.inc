@@ -119,10 +119,6 @@ MACRO add_hl_a
 	inc h
 ENDM
 
-MACRO rst_add_hl_a
-	rst $08
-ENDM
-
 MACRO add_de_a
 	add a,e
 	ld e,a

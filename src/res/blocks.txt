@@ -142,6 +142,11 @@ palette purple_palette
 visitable
 w 0,6
 
++EnemyPaint
+palette orange_palette
+visitable
+w 4,6
+
 #######################################
 # Special floors
 #######################################

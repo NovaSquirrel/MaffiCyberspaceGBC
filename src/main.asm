@@ -58,8 +58,10 @@ StartMainLoop::
 	ld [hl+], a ; PaintShootDiagonalDirection
 	ld [hl+], a ; PaintShootDirectionLock
 	ld [hl+], a ; PaintShotID
+	ld [hl+], a ; HoldingPaintButton
 	ld [hl+], a ; PlayerShootDiagonalTimer
 	ld [hl+], a ; PlayerShootingTimer
+	ld [hl+], a ; PlayerInvincibleTimer
 	ld [PaintRefillCooldown], a
 	ld [PlayerDrawDirection], a
 	ld [DMG_PlayerAnimationFrame_Page], a
@@ -68,6 +70,8 @@ StartMainLoop::
 	ld a, 32
 	ldh [PlayerPXH], a
 	ldh [PlayerPYH], a
+	ld a, 4
+	ld [PlayerHealth], a
 
 	; .----------------------------------------------------
 	; | Initialize non-gameplay state

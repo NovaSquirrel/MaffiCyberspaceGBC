@@ -20,10 +20,11 @@ include "include/macros.inc"
 SECTION "rst00", ROM0[$0000]
 	ret
 SECTION "rst08", ROM0[$0008]
+AddHL_A::
 	; add hl, a
 	add a,l
 	ld l,a
-	jr nc, @+3
+	ret nc
 	inc h
 	ret
 SECTION "rst10", ROM0[$0010]
@@ -41,9 +42,15 @@ MemsetSmall::
 	jr nz, MemsetSmall
 	ret
 SECTION "rst20", ROM0[$0020]
+CallDE::
+	push de
 	ret
 SECTION "rst28", ROM0[$0028]
-	ret
+CallHLIndirect::
+	ld a, [hl+]
+	ld h, [hl]
+	ld l, a
+	jp hl
 SECTION "rst30", ROM0[$0030]
 	ret
 SECTION "rst38", ROM0[$0038]

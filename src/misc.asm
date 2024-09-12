@@ -370,6 +370,12 @@ MapFlagsLH_XY::
 	ld a, [hl]
 	ret
 
+BlockChangeForPlayer::
+	call BlockChangeForActor
+	ld a, BANK(RunPlayer)
+	ld [rROMB0], a
+	ret
+
 ; HL = Block to change
 ; A = Block to change it to
 BlockChangeForActor::

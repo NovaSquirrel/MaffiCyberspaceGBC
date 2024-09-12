@@ -68,18 +68,23 @@ PreviousOAMWrite:: ds 1
 
 LevelID:: ds 1
 
+PlayerHealth:: ds 1
+
 PaintAmount::                 ds 1 ; The paint bar amount
 PaintAmountShownOnscreen::    ds 1 ; For detecting when to update the bar
 PaintShootDirection::         ds 1 ; 0=right, 1=down right, 2=down, etc.
 PaintShootDiagonalDirection:: ds 1
 PaintShootDirectionLock::     ds 1
 PaintShotID::                 ds 1 ; Increments every shot
+HoldingPaintButton:: ds 1
 
 
-; Timers
+; Timers - note the code in player.asm that will need to be updated if this is changed around
 PaintShootDiagonalTimer:: ds 1
 PaintShootingTimer::      ds 1
+PlayerInvincibleTimer::   ds 1
 PaintRefillCooldown::     ds 1
+
 
 ; Variables for the alternative player frame streaming that's used when DMA is not available
 DMG_PlayerAnimationFrame_InProgress::   ds 1 ; If 1, write the second set of tiles
@@ -125,6 +130,7 @@ PlaceholderPointers_AddFloors::
 	ds 8*4
 PlaceholderPointers_AddWalls::
 	ds 8*4
+PlaceholderPointers_End::
 
 	NEXTU
 ; Gameplay mode

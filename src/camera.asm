@@ -243,7 +243,7 @@ CameraConvertX:
 	inc a
 	and 7
 	add a
-	rst_add_hl_a
+	add_hl_a
 
 	; Write the pointer
 	ld de, ParallaxShifts

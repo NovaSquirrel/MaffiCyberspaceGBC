@@ -42,6 +42,12 @@ RunPlayer::
 		dec [hl]
 	:
 	inc hl
+	ld a, [hl] ; HL: PlayerInvincibleTimer
+	or a
+	jr z, :+
+		dec [hl]
+	:
+	inc hl
 	ld a, [hl] ; HL: PaintRefillCooldown
 	or a
 	jr z, :+
@@ -208,6 +214,29 @@ RunPlayer::
 		ld [PaintShootDirection], a
 	:
 
+	; Check for special floors
+	ldh a, [PlayerPXH]
+	ld l, a
+	ldh a, [PlayerPYH]
+	ld h, a
+	call MapPointerLH_XY
+	ld a, [hl]
+	sub BlockMarker_SpecialFloor
+	jr c, .NoSpecialFloor
+	cp BlockMarker_EndSpecialFloor - BlockMarker_SpecialFloor
+	jr nc, .NoSpecialFloor
+		ld b,b
+		push hl
+		add a
+		ld hl, BlockRoutinesAbove
+		add_hl_a
+		ld a, [hl+]
+		ld d, [hl]
+		ld e, a
+		pop hl
+		rst CallDE
+	.NoSpecialFloor:
+
 	ldh a, [KeyNew]
 	and PADF_A
 	jr z, .NotShootStart
@@ -221,6 +250,7 @@ RunPlayer::
 		ld [PaintShootingTimer], a
 	.NotShootStart:
 
+	; -------------------------------------------
 	ld a, [PaintShootingTimer]
 	cp 24
 	jr nz, .NoFlick
@@ -259,9 +289,9 @@ RunPlayer::
 		ld hl, PlayerProjectiles ; Start making projectiles from the start
 	:	push bc
 		; Make flick particle
-		xor a
 		ld [hl], ActorType_PaintProjectile
 		inc l
+		xor a
 		ld [hl+], a ; actor_state
 		ld [hl+], a ; actor_timer
 
@@ -454,19 +484,34 @@ DrawPlayer::
 	dec b
 	jr nz, :-
 
+
+	; Hurt animation
+	ld a, [PlayerInvincibleTimer]
+	cp PLAYER_HURT_INVINCIBILITY - 30
+	jr c, :+
+		ld a, [PlayerAnimationFrame]
+		add PLAYER_FRAME_R_HURT - PLAYER_FRAME_R
+		ld [PlayerAnimationFrame], a
+		jr .NotPressingDirection
+	:
+	or a
+	jr z, :+
+		and 3
+		ret z ; Just don't draw the player at all
+	:
 	; Shooting animation
 	ld a, [PaintShootingTimer]
 	cp 25/2
 	jr c, :+
 		ld a, [PlayerAnimationFrame]
-		add 4
+		add PLAYER_FRAME_R_SHOOT2 - PLAYER_FRAME_R
 		ld [PlayerAnimationFrame], a
 		jr .NotPressingDirection
 	:
 	cp 25/2-4
 	jr c, :+
 		ld a, [PlayerAnimationFrame]
-		add 3
+		add PLAYER_FRAME_R_SHOOT - PLAYER_FRAME_R
 		ld [PlayerAnimationFrame], a
 		jr .NotPressingDirection
 	:
@@ -616,16 +661,19 @@ HorizontalOffsetForPose:
 	enum_elem PLAYER_FRAME_R3
 	enum_elem PLAYER_FRAME_R_SHOOT
 	enum_elem PLAYER_FRAME_R_SHOOT2
+	enum_elem PLAYER_FRAME_R_HURT
 	enum_elem PLAYER_FRAME_D
 	enum_elem PLAYER_FRAME_D2
 	enum_elem PLAYER_FRAME_D3
 	enum_elem PLAYER_FRAME_D_SHOOT
 	enum_elem PLAYER_FRAME_D_SHOOT2
+	enum_elem PLAYER_FRAME_D_HURT
 	enum_elem PLAYER_FRAME_U
 	enum_elem PLAYER_FRAME_U2
 	enum_elem PLAYER_FRAME_U3
 	enum_elem PLAYER_FRAME_U_SHOOT
 	enum_elem PLAYER_FRAME_U_SHOOT2
+	enum_elem PLAYER_FRAME_U_HURT
 
 ; ---------------------------------------------------------
 

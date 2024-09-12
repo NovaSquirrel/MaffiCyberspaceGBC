@@ -152,10 +152,12 @@ ActorKitty::
 	call EnemyCommon
 	ldh a, [framecount]
 	rrca
+	rrca
 	and %100
 	add a, $58
 	ld b, 0
 	jp DrawActor_16x16
+	jp DrawEnemy_16x16_AndCollide
 
 ActorPaintProjectile::
 	ld hl, actor_vxl
@@ -235,7 +237,7 @@ ActorPaintProjectile::
 	ld a, TILE_ID_PAINT_PROJECTILE
 	jp DrawPaintProjectile
 
-ActorHurtStarProjectile::
+ActorHurtStarParticle::
 	call ActorApplyVelocity
 
 	ld hl, actor_timer
@@ -280,11 +282,17 @@ ActorEnemySpawning::
 	inc [hl]
 	ld a, [hl]
 	cp 60
-	jr nz, :+
+	jr nz, .notReady
+		; TODO: have an actual lookup here
 		ld a, ActorType_Sneaker
 		ld [de], a
+		call RandomByte
+		and 3
+		ret nz
+		ld a, ActorType_Kitty
+		ld [de], a
 		ret
-	:
+	.notReady:
 
 	ld a, TILE_ID_ENEMY_SPAWNING
 	ld b, 0
@@ -1052,7 +1060,7 @@ DrawEnemy_16x16_AndCollide:
 		call FindFreeActorSlot
 		jr nc, .NoFreeActorSlot
 			call ClearActorHL
-			ld a, ActorType_HurtStarProjectile
+			ld a, ActorType_HurtStarParticle
 			ld [hl], a ; HL: actor_type
 
 			switch_hl_to_field actor_type, actor_vxl
@@ -1076,7 +1084,28 @@ DrawEnemy_16x16_AndCollide:
 		.NoFreeActorSlot:
 	.NoCollide:
 
+	; Damage the player
+	ld a, [PlayerInvincibleTimer]
+	or a
+	ret nz
 	call CollideWithPlayer
+	ret nc
+	ld a, PLAYER_HURT_INVINCIBILITY
+	ld [PlayerInvincibleTimer], a
+
+	; Remove health, and show this onscreen
+	ld a, [PlayerHealth]
+	or a
+	ret z
+	ld hl, _SCRN1+14
+	add_hl_a
+
+	ld a, [PlayerHealth]
+	dec a
+	ld [PlayerHealth], a
+
+	wait_vram
+	ld [hl], $F7
 	ret
 
 ; ---------------------------------------------------------

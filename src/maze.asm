@@ -37,6 +37,31 @@ LoadLevel::
 	ld a, LEVEL_AREA_1
 	ldh [CurrentTileValue], a
 
+	push hl
+
+	ld a, $C3 ; JP opcode
+	ld c, PlaceholderPointers_End-PlaceholderPointers_AddFloors
+	ld hl, PlaceholderPointers_AddFloors
+	rst MemsetSmall
+
+	ld a, LOW(FloorSomeStars)
+	ld [PlaceholderPointers_AddFloors+4*0+1], a
+	ld [PlaceholderPointers_AddFloors+4*1+1], a
+	ld a, HIGH(FloorSomeStars)
+	ld [PlaceholderPointers_AddFloors+4*0+2], a
+	ld [PlaceholderPointers_AddFloors+4*1+2], a
+
+	ld a, LOW(WallChance75Percent)
+	ld [PlaceholderPointers_AddWalls+4*0+1], a
+	ld a, HIGH(WallChance75Percent)
+	ld [PlaceholderPointers_AddWalls+4*0+2], a
+	ld a, LOW(WallChance25Percent)
+	ld [PlaceholderPointers_AddWalls+4*1+1], a
+	ld a, HIGH(WallChance25Percent)
+	ld [PlaceholderPointers_AddWalls+4*1+2], a
+
+	pop hl
+
 ; Process each level command
 LoadLevelLoop:
 	ld a, [hl+]
@@ -114,34 +139,6 @@ LevelCommand_FillPlaceholders:
 	; -----------------------------------------------------
 	; Add walls to the ground tiles that were placed
 	; -----------------------------------------------------
-
-	; Hardcode some pointers for now
-	ld a, $c3 ; JP
-	ld [PlaceholderPointers_AddWalls+4*0], a
-	ld [PlaceholderPointers_AddWalls+4*1], a
-	ld [PlaceholderPointers_AddFloors+4*0], a
-	ld [PlaceholderPointers_AddFloors+4*1], a
-
-	ld a, LOW(WallChance75Percent)
-	ld [PlaceholderPointers_AddWalls+4*0+1], a
-	ld a, HIGH(WallChance75Percent)
-	ld [PlaceholderPointers_AddWalls+4*0+2], a
-
-	ld a, LOW(WallChance93Percent)
-	ld [PlaceholderPointers_AddWalls+4*1+1], a
-	ld a, HIGH(WallChance93Percent)
-	ld [PlaceholderPointers_AddWalls+4*1+2], a
-
-	ld a, LOW(FloorNormal)
-	ld [PlaceholderPointers_AddFloors+4*0+1], a
-	ld a, HIGH(FloorNormal)
-	ld [PlaceholderPointers_AddFloors+4*0+2], a
-
-	ld a, LOW(FloorStar)
-	ld [PlaceholderPointers_AddFloors+4*1+1], a
-	ld a, HIGH(FloorStar)
-	ld [PlaceholderPointers_AddFloors+4*1+2], a
-
 	ld de, Playfield+64+1
 AddWalls:
     ; Don't try to place walls in the void, or anything else that's not a placeholder area
@@ -430,10 +427,16 @@ FixUnvisitedFloor:
 
 
 ; ---------------------------------------------------------
-FloorNormal:
+FloorAllNormal:
 	ld [hl], BlockType_Floor
 	jp ReturnFromAddFloors
-FloorStar:
+FloorSomeStars:
+	ld [hl], BlockType_Floor
+	push hl
+	call RandomByteLCG
+	pop hl
+	cp 15
+	jp nc, ReturnFromAddFloors
 	ld [hl], BlockType_Star
 	jp ReturnFromAddFloors
 
