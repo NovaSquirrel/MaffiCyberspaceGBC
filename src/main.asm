@@ -170,9 +170,9 @@ forever:
 	ld [PlayerAnimationFrameInVRAM], a
 	add a, a ; * 2
 	add a, a ; * 4
-	add a, a ; * 8
 	ld h, 0
 	ld l, a
+	add hl, hl
 	add hl, hl
 	add hl, hl
 	add hl, hl
@@ -377,9 +377,9 @@ PreVblankForDMG:
 	ld a, [PlayerAnimationFrameInVRAM]
 	add a, a ; * 2
 	add a, a ; * 4
-	add a, a ; * 8
 	ld h, 0
 	ld l, a
+	add hl, hl
 	add hl, hl
 	add hl, hl
 	add hl, hl

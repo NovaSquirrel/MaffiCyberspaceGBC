@@ -156,7 +156,6 @@ ActorKitty::
 	and %100
 	add a, $58
 	ld b, 0
-	jp DrawActor_16x16
 	jp DrawEnemy_16x16_AndCollide
 
 ActorPaintProjectile::

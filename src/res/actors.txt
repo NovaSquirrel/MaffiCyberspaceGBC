@@ -10,9 +10,6 @@ run ActorKitty
 +PaintProjectile
 run ActorPaintProjectile
 
-+PaintRollProjectile
-run ActorPaintRollProjectile
-
 +HurtStarParticle
 run ActorHurtStarParticle
 

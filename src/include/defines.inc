@@ -101,6 +101,8 @@ DEF PROJECTILE_COLLISION_HEIGHT = 10
 
 DEF PLAYER_HURT_INVINCIBILITY = 160
 
+DEF TIME_NEEDED_TO_ROLL = 24
+
 ; Main projectile
 DEF PlayerProjectiles_type EQUS "(PlayerProjectiles + actor_type)"
 DEF PlayerProjectiles_vxl  EQUS "(PlayerProjectiles + actor_vxl)"

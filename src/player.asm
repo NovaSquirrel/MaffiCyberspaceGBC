@@ -237,6 +237,19 @@ RunPlayer::
 		rst CallDE
 	.NoSpecialFloor:
 
+	; -------------------------------------------
+	ld hl, HoldingPaintButton
+	ldh a, [KeyDown]
+	and PADF_A
+	jr nz, .YesHolding
+		ld [hl], 0
+		jr .NotHolding
+	.YesHolding:
+		bit 7, [hl] ; Max out at 128
+		jr nz, .NotHolding
+		inc [hl]
+	.NotHolding:
+
 	ldh a, [KeyNew]
 	and PADF_A
 	jr z, .NotShootStart
@@ -423,6 +436,7 @@ DrawPlayer::
 	def PlayerTile2 equs "temp2"
 	def PlayerTile3 equs "temp3"
 	def PlayerTile4 equs "temp4"
+	def PlayerXWithoutOffset equs "temp5"
 
 	; Get X position first
 	ldh a, [CameraX+0]
@@ -437,6 +451,7 @@ DrawPlayer::
 	call SharedCameraSubtractCode
 	add 8-8
 	ld d, a
+	ldh [PlayerXWithoutOffset], a
 	add 8-(PLAYER_COLLISION_WIDTH/2)
 	ldh [PlayerCollisionX], a
 
@@ -499,6 +514,21 @@ DrawPlayer::
 		and 3
 		ret z ; Just don't draw the player at all
 	:
+	ldh a, [HoldingPaintButton]
+	cp TIME_NEEDED_TO_ROLL
+	jr c, :++
+		ld a, [PlayerAnimationFrame]
+		add PLAYER_FRAME_R_SHOOT2 - PLAYER_FRAME_R
+		ld [PlayerAnimationFrame], a
+		ldh a, [IsNotGameBoyColor]
+		or a
+		jr z, :+
+			ld a, [PlayerAnimationFrame]
+			add PLAYER_FRAME_R_ROLLING_DMG - PLAYER_FRAME_R_SHOOT2
+			ld [PlayerAnimationFrame], a
+		:
+		jr .CanDoWalk
+	:
 	; Shooting animation
 	ld a, [PaintShootingTimer]
 	cp 25/2
@@ -506,7 +536,8 @@ DrawPlayer::
 		ld a, [PlayerAnimationFrame]
 		add PLAYER_FRAME_R_SHOOT2 - PLAYER_FRAME_R
 		ld [PlayerAnimationFrame], a
-		jr .NotPressingDirection
+		jr .CanDoWalk
+;		jr .NotPressingDirection
 	:
 	cp 25/2-4
 	jr c, :+
@@ -515,6 +546,7 @@ DrawPlayer::
 		ld [PlayerAnimationFrame], a
 		jr .NotPressingDirection
 	:
+	.CanDoWalk:
 
 	; Walking animation
 	ldh a, [KeyDown]
@@ -570,11 +602,46 @@ DrawPlayer::
 	ld l, a
 
 ; --------------------------------
-	; Add extra sprite first
-
+; Add rolling brush if needed
+DrawRollingBrush:
 	ldh a, [IsNotGameBoyColor]
 	or a
-	jp nz, NoFaceSprite
+	jr nz, NoFaceSprite
+	ldh a, [HoldingPaintButton]
+	cp TIME_NEEDED_TO_ROLL
+	jr c, .NoDrawBrush
+		ld a, [PlayerDrawDirection]
+		cp DIRECTION_UP
+		jr z, .NoDrawBrush
+		push bc
+		push de
+		add a
+		ld bc, PaintbrushYXOffset
+		add_bc_a
+
+		ld a, [bc]
+		add e ; Y position
+		ld [hl+], a
+		inc bc
+		ldh a, [PlayerXWithoutOffset]
+		ld d, a
+		ld a, [bc]
+		add d ; X position
+		ld [hl+], a
+		ld a, TILE_ID_PAINTBRUSH_DOWN
+		ld [hl+], a
+		ld a, SP_PALETTE_PLAYER
+		ld [hl+], a
+		pop de
+		pop bc
+	.NoDrawBrush:
+
+	; --------------------------------
+	; Add face sprite above player
+
+	;ldh a, [IsNotGameBoyColor]
+	;or a
+	;jp nz, NoFaceSprite
 	ld a, [PlayerDrawDirection]
 	cp DIRECTION_UP
 	jr z, NoFaceSprite
@@ -614,7 +681,7 @@ DrawPlayer::
 	; Now add the rest of the player
 
 	; Loop to create the OAM entries
-	ld c, 2     ; 3 rows
+	ld c, 2     ; 2 rows
 :	ld a, e
 	ld [hl+], a ; Y position
 	ld a, d
@@ -643,6 +710,31 @@ DrawPlayer::
 
 ; --------------------------------
 
+; When facing up, draw this below the player instead of above
+; though this should be solvable with just a different graphic for the player, if the brush continues to use the same palette
+DrawRollingBrushBelow:
+	ldh a, [HoldingPaintButton]
+	cp TIME_NEEDED_TO_ROLL
+	jr c, .NoDrawBrush
+		ld a, [PlayerDrawDirection]
+		cp DIRECTION_UP
+		jr nz, .NoDrawBrush
+		ldh a, [IsNotGameBoyColor]
+		or a
+		jr nz, .NoDrawBrush
+
+		ld a, e
+		sub 6+16+2
+		ld [hl+], a
+		ldh a, [PlayerXWithoutOffset]
+		add 4
+		ld [hl+], a
+		ld a, TILE_ID_PAINTBRUSH_DOWN
+		ld [hl+], a
+		ld a, SP_PALETTE_PLAYER
+		ld [hl+], a
+	.NoDrawBrush:
+
 	ld a, l
 	ldh [OAMWrite], a
 	ret
@@ -653,27 +745,54 @@ WalkCycle:
 	db 0, 1, 0, 2
 HorizontalOffsetForPose:
 	db -2, 2, 2, -2
+PaintbrushYXOffset:
+	DEF PBDrawOffsetX = 4
+	DEF PBDrawOffsetY = 16
+	DEF PBDrawDistance = 6
+	db PBDrawOffsetY,                PBDrawOffsetX+PBDrawDistance
+;	db PBDrawOffsetY+PBDrawDistance, PBDrawOffsetX+PBDrawDistance
+	db PBDrawOffsetY+PBDrawDistance-2, PBDrawOffsetX
+;	db PBDrawOffsetY+PBDrawDistance, PBDrawOffsetX-PBDrawDistance
+	db PBDrawOffsetY,                PBDrawOffsetX-PBDrawDistance
+;	db PBDrawOffsetY-PBDrawDistance, PBDrawOffsetX-PBDrawDistance
+	db PBDrawOffsetY-PBDrawDistance+2, PBDrawOffsetX
+;	db PBDrawOffsetY-PBDrawDistance, PBDrawOffsetX+PBDrawDistance
 
 ; Player frames
-	enum_start
-	enum_elem PLAYER_FRAME_R
-	enum_elem PLAYER_FRAME_R2
-	enum_elem PLAYER_FRAME_R3
-	enum_elem PLAYER_FRAME_R_SHOOT
-	enum_elem PLAYER_FRAME_R_SHOOT2
-	enum_elem PLAYER_FRAME_R_HURT
-	enum_elem PLAYER_FRAME_D
-	enum_elem PLAYER_FRAME_D2
-	enum_elem PLAYER_FRAME_D3
-	enum_elem PLAYER_FRAME_D_SHOOT
-	enum_elem PLAYER_FRAME_D_SHOOT2
-	enum_elem PLAYER_FRAME_D_HURT
-	enum_elem PLAYER_FRAME_U
-	enum_elem PLAYER_FRAME_U2
-	enum_elem PLAYER_FRAME_U3
-	enum_elem PLAYER_FRAME_U_SHOOT
-	enum_elem PLAYER_FRAME_U_SHOOT2
-	enum_elem PLAYER_FRAME_U_HURT
+	rsreset
+	def PLAYER_FRAME_R rb
+	def PLAYER_FRAME_R2 rb
+	def PLAYER_FRAME_R3 rb
+	def PLAYER_FRAME_R_SHOOT rb
+	def PLAYER_FRAME_R_SHOOT2 rb ; And roll
+	def PLAYER_FRAME_R_ROLL1 rb
+	def PLAYER_FRAME_R_ROLL2 rb
+	def PLAYER_FRAME_R_HURT rb
+	def PLAYER_FRAME_R_ROLLING_DMG rb
+	def PLAYER_FRAME_R_ROLLING_DMG2 rb
+	def PLAYER_FRAME_R_ROLLING_DMG3 rb
+	def PLAYER_FRAME_D rb
+	def PLAYER_FRAME_D2 rb
+	def PLAYER_FRAME_D3 rb
+	def PLAYER_FRAME_D_SHOOT rb
+	def PLAYER_FRAME_D_SHOOT2 rb
+	def PLAYER_FRAME_D_ROLL1 rb
+	def PLAYER_FRAME_D_ROLL2 rb
+	def PLAYER_FRAME_D_HURT rb
+	def PLAYER_FRAME_D_ROLLING_DMG rb
+	def PLAYER_FRAME_D_ROLLING_DMG2 rb
+	def PLAYER_FRAME_D_ROLLING_DMG3 rb
+	def PLAYER_FRAME_U rb
+	def PLAYER_FRAME_U2 rb
+	def PLAYER_FRAME_U3 rb
+	def PLAYER_FRAME_U_SHOOT rb
+	def PLAYER_FRAME_U_SHOOT2 rb
+	def PLAYER_FRAME_U_ROLL1 rb
+	def PLAYER_FRAME_U_ROLL2 rb
+	def PLAYER_FRAME_U_HURT rb
+	def PLAYER_FRAME_U_ROLLING_DMG rb
+	def PLAYER_FRAME_U_ROLLING_DMG2 rb
+	def PLAYER_FRAME_U_ROLLING_DMG3 rb
 
 ; ---------------------------------------------------------
 

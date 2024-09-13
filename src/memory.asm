@@ -45,6 +45,8 @@ NegativeCameraX::   ds 2
 NegativeCameraY::   ds 2
 LYC_Interrupt_LCDC:: ds 1 ; Value to write to LCDC when the LYC interrupt happens
 
+HoldingPaintButton:: ds 1
+
 ; 8-bit collision coordinates, relative to the screen
 PlayerCollisionX::     ds 1
 PlayerCollisionY::     ds 1
@@ -76,7 +78,6 @@ PaintShootDirection::         ds 1 ; 0=right, 1=down right, 2=down, etc.
 PaintShootDiagonalDirection:: ds 1
 PaintShootDirectionLock::     ds 1
 PaintShotID::                 ds 1 ; Increments every shot
-HoldingPaintButton:: ds 1
 
 
 ; Timers - note the code in player.asm that will need to be updated if this is changed around
