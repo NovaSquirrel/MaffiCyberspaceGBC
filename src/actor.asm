@@ -472,6 +472,35 @@ CollideWithPlayer:
 	adc ENEMY_COLLISION_HEIGHT+PLAYER_COLLISION_HEIGHT-1 ; Carry set if overlap
 	ret
 
+CollideWithRolling:
+	ldh a, [HoldingPaintButton]
+	cp TIME_NEEDED_TO_ROLL
+	ccf
+	ret nc
+	ld a, [PaintRefillCooldown]
+	or a
+	ret z ; "or a" will always clear carry
+
+	ldh a, [RollingCollisionX]
+	ld b, a
+	ldh a, [EnemyCollisionX]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc ROLLING_COLLISION_WIDTH-1
+	ccf
+	adc ENEMY_COLLISION_WIDTH+10-1 ; Carry set if overlap
+	ret nc
+
+	ldh a, [RollingCollisionY]
+	ld b, a
+	ldh a, [EnemyCollisionY]
+	scf
+	sbc b ; Note will subtract n-1
+	sbc ROLLING_COLLISION_HEIGHT-1
+	ccf
+	adc ENEMY_COLLISION_HEIGHT+10-1 ; Carry set if overlap
+	ret
+
 CollideWithProjectiles:
 	; Quickly exit if there are no projectiles
 	ld a, [PlayerProjectiles_type]
@@ -1082,6 +1111,9 @@ DrawEnemy_16x16_AndCollide:
 			ld [hl], a     ; actor_pxh
 		.NoFreeActorSlot:
 	.NoCollide:
+
+	call CollideWithRolling
+	jp c, ActorBecomePoof
 
 	; Damage the player
 	ld a, [PlayerInvincibleTimer]

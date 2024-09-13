@@ -54,6 +54,8 @@ ProjectileCollisionX:: ds 1
 ProjectileCollisionY:: ds 1
 EnemyCollisionX::      ds 1
 EnemyCollisionY::      ds 1
+RollingCollisionX::    ds 1
+RollingCollisionY::    ds 1
 
 SECTION "BSS", WRAM0
 KeyRepeat::    ds 1

@@ -55,6 +55,9 @@ RunPlayer::
 		jr .NoRefill
 	:
 	; PaintRefillCooldown is zero, so refill some paint
+	ldh a, [HoldingPaintButton] ; Don't refill if you're rolling
+	cp TIME_NEEDED_TO_ROLL
+	jr nc, .NoRefill
 	ld a, [PaintAmount]
 	inc a
 	jr z, :+
@@ -353,6 +356,38 @@ RunPlayer::
 	:
 	.NoFlick:
 
+	ldh a, [HoldingPaintButton]
+	cp TIME_NEEDED_TO_ROLL
+	jr c, .NoPaintMap
+		; Paint the map
+		ldh a, [KeyDown]
+		and PADF_LEFT | PADF_DOWN | PADF_UP | PADF_RIGHT
+		jr z, .NoPaintMap
+			ldh a, [framecount]
+			and 3
+			jr nz, .NoPaintMap
+
+			ld hl, PaintAmount
+			ld a, [hl]
+			or a
+			jr z, .NoPaintMap
+			sub 2
+			jr c, .NoPaintMap
+			ld [hl], a
+			ld a, 10
+			ld [PaintRefillCooldown], a
+
+			; Paint the ground
+			ldh a, [PlayerPXH]
+			ld l, a
+			ldh a, [PlayerPYH]
+			ld h, a
+			call MapPointerLH_XY
+			ld a, [hl]
+			cp BlockType_Floor
+			ld a, BlockType_Paint
+			call z, BlockChangeForPlayer
+	.NoPaintMap:
 	ret
 
 DoDiagonalLock:
@@ -452,6 +487,7 @@ DrawPlayer::
 	add 8-8
 	ld d, a
 	ldh [PlayerXWithoutOffset], a
+	ldh [RollingCollisionX], a
 	add 8-(PLAYER_COLLISION_WIDTH/2)
 	ldh [PlayerCollisionX], a
 
@@ -476,8 +512,27 @@ DrawPlayer::
 	call SharedCameraSubtractCode
 	add 16-24-7
 	ld e, a
+	ldh [RollingCollisionY], a
 	add 31-(PLAYER_COLLISION_HEIGHT/2)
 	ldh [PlayerCollisionY], a
+
+	; Adjust RollingCollisionX and RollingCollisionY if they're needed
+	ldh a, [HoldingPaintButton]
+	cp TIME_NEEDED_TO_ROLL
+	jr c, :+
+		ld hl, RollingCollisionX
+		ld bc, RollingCollisionXYAdjustForDirection
+		ld a, [PlayerDrawDirection]
+		add a
+		add_bc_a
+		ld a, [bc]
+		add [hl]
+		ld [hl+], a ; X
+		inc bc
+		ld a, [bc]
+		add [hl]
+		ld [hl], a ; Y
+	:
 
 	; Get the animation frame for the direction, which will become a source pointer for the DMA or the slower copy
 	ld a, [PlayerDrawDirection]
@@ -516,7 +571,7 @@ DrawPlayer::
 	:
 	ldh a, [HoldingPaintButton]
 	cp TIME_NEEDED_TO_ROLL
-	jr c, :++
+	jr c, .NotRolling
 		ld a, [PlayerAnimationFrame]
 		add PLAYER_FRAME_R_SHOOT2 - PLAYER_FRAME_R
 		ld [PlayerAnimationFrame], a
@@ -528,7 +583,7 @@ DrawPlayer::
 			ld [PlayerAnimationFrame], a
 		:
 		jr .CanDoWalk
-	:
+	.NotRolling:
 	; Shooting animation
 	ld a, [PaintShootingTimer]
 	cp 25/2
@@ -757,6 +812,16 @@ PaintbrushYXOffset:
 ;	db PBDrawOffsetY-PBDrawDistance, PBDrawOffsetX-PBDrawDistance
 	db PBDrawOffsetY-PBDrawDistance+2, PBDrawOffsetX
 ;	db PBDrawOffsetY-PBDrawDistance, PBDrawOffsetX+PBDrawDistance
+
+RollingCollisionXYAdjustForDirection:
+; Right
+	db 8-(ROLLING_COLLISION_WIDTH/2)+6, 31-(ROLLING_COLLISION_HEIGHT/2)
+; Down
+	db 8-(ROLLING_COLLISION_WIDTH/2), 31-(ROLLING_COLLISION_HEIGHT/2)+6
+; Left
+	db 8-(ROLLING_COLLISION_WIDTH/2)-6, 31-(ROLLING_COLLISION_HEIGHT/2)
+; Up
+	db 8-(ROLLING_COLLISION_WIDTH/2), 31-(ROLLING_COLLISION_HEIGHT/2)-6
 
 ; Player frames
 	rsreset
