@@ -1039,17 +1039,10 @@ DrawEnemy_16x16_AndCollide:
 	call DrawActor_16x16
 	ret nc
 
+	; -----------------------------------------------------
 	call CollideWithProjectiles
 	jr nc, .NoCollide
-		;switch_hl_to_field actor_type, actor_vxl
-		;ld a, [hl+]
-		;ld b, a ; B = X Speed
-		;ld a, [hl]
-		;ld c, a ; C = Y Speed
-		;switch_hl_to_field actor_vyl, actor_var1
-		;ld a, [hl]
-		;ldh [temp1], a
-
+	.DidCollideWithProjectile:
 		ld hl, actor_health
 		add hl, de
 		ld a, [hl] ; HL: actor_health
@@ -1074,47 +1067,49 @@ DrawEnemy_16x16_AndCollide:
 		ld a, [PlayerProjectiles_vyl]
 		ld [hl],  a ; HL: actor_knockback_sign_y
 
-		; Create damage particle
-		ld hl, actor_pyl
-		add hl, de
-		ld a, [hl+] ; HL: actor_pyl
-		ldh [temp1], a
-		ld a, [hl+] ; HL: actor_pyh
-		ldh [temp2], a
-		ld a, [hl+] ; HL: actor_pxl
-		ldh [temp3], a
-		ld a, [hl+] ; HL: actor_pxh
-		ldh [temp4], a
-		call FindFreeActorSlot
-		jr nc, .NoFreeActorSlot
-			call ClearActorHL
-			ld a, ActorType_HurtStarParticle
-			ld [hl], a ; HL: actor_type
-
-			switch_hl_to_field actor_type, actor_vxl
-			call RandomByte
-			and 31
-			sub 16
-			ld [hl+], a     ; actor_vxl
-			call RandomByte
-			and 31
-			sub 16
-			ld a, 1
-			ld [hl+], a    ; actor_vyl
-			ldh a, [temp1]
-			ld [hl+], a    ; actor_pyl
-			ldh a, [temp2]
-			ld [hl+], a    ; actor_pyh
-			ldh a, [temp3]
-			ld [hl+], a    ; actor_pxl
-			ldh a, [temp4]
-			ld [hl], a     ; actor_pxh
-		.NoFreeActorSlot:
+		call CreateDamageParticleForActor
 	.NoCollide:
 
+	; -----------------------------------------------------
+	ld hl, actor_knockback_timer
+	add hl, de
+	ld a, [hl]
+	or a
+	jr nz, .NoCollideWithRoll
 	call CollideWithRolling
-	jp c, ActorBecomePoof
+	jr nc, .NoCollideWithRoll
+		ld hl, actor_health
+		add hl, de
+		ld a, [hl] ; HL: actor_health
+		sub $08
+		ld [hl+], a
+		jr z, .OutOfHealthRoll
+		jr nc, :+
+		.OutOfHealthRoll:
+			call ActorBecomePoof
 
+			pop hl
+			ret
+		:
+		ld hl, actor_knockback_timer
+		add hl, de
+		ld a, 45 ; Timer amount
+		ld [hl+], a ; HL: actor_knockback_timer
+
+		ld a, [PlayerDrawDirection]
+		add a
+		ld bc, KnockbackXYForRollDirections
+		add_bc_a
+		ld a, [bc]
+		ld [hl+], a ; HL: actor_knockback_sign_x
+		inc bc
+		ld a, [bc]
+		ld [hl],  a ; HL: actor_knockback_sign_y
+
+		call CreateDamageParticleForActor
+	.NoCollideWithRoll:
+
+	; -----------------------------------------------------
 	; Damage the player
 	ld a, [PlayerInvincibleTimer]
 	or a
@@ -1137,6 +1132,51 @@ DrawEnemy_16x16_AndCollide:
 
 	wait_vram
 	ld [hl], $F7
+	ret
+
+KnockbackXYForRollDirections:
+	db 16, 0
+	db 0, 16
+	db -16, 0
+	db 0, -16
+
+CreateDamageParticleForActor:
+	; Create damage particle
+	ld hl, actor_pyl
+	add hl, de
+	ld a, [hl+] ; HL: actor_pyl
+	ldh [temp1], a
+	ld a, [hl+] ; HL: actor_pyh
+	ldh [temp2], a
+	ld a, [hl+] ; HL: actor_pxl
+	ldh [temp3], a
+	ld a, [hl+] ; HL: actor_pxh
+	ldh [temp4], a
+	call FindFreeActorSlot
+	jr nc, .NoFreeActorSlot
+		call ClearActorHL
+		ld a, ActorType_HurtStarParticle
+		ld [hl], a ; HL: actor_type
+
+		switch_hl_to_field actor_type, actor_vxl
+		call RandomByte
+		and 31
+		sub 16
+		ld [hl+], a     ; actor_vxl
+		call RandomByte
+		and 31
+		sub 16
+		ld a, 1
+		ld [hl+], a    ; actor_vyl
+		ldh a, [temp1]
+		ld [hl+], a    ; actor_pyl
+		ldh a, [temp2]
+		ld [hl+], a    ; actor_pyh
+		ldh a, [temp3]
+		ld [hl+], a    ; actor_pxl
+		ldh a, [temp4]
+		ld [hl], a     ; actor_pxh
+	.NoFreeActorSlot:
 	ret
 
 ; ---------------------------------------------------------
