@@ -138,6 +138,7 @@ MACRO get_block_flags
 	ld l, a
 	ld a, [hl]
 ENDM
+DEF BLOCK_CLASS_MASK = %111111
 
 ; This macro is meant for when HL is already pointing at one item within an actor,
 ; and it will switch from one field to another. One cycle faster than the "add hl, de" way.

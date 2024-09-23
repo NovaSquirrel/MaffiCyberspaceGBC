@@ -110,6 +110,7 @@ ParallaxShifts::
 SECTION "Stack", WRAM0
 Stack::
 	ds 256
+StackEnd::
 
 SECTION "Queue", WRAM0, ALIGN[9]
 	UNION

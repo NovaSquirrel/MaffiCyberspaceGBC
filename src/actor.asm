@@ -207,7 +207,11 @@ ActorPaintProjectile::
 		ld l, b
 		call MapPointerLH_XY
 		ld a, [hl]
-		cp BlockType_Floor
+		push hl
+		get_block_flags
+		pop hl
+		and BLOCK_CLASS_MASK
+		cp BlockClass_Paintable
 		ld a, BlockType_Paint
 		call z, BlockChangeForActor
 

@@ -58,3 +58,7 @@ RunBlockStar::
 
 	ld a, BlockType_Floor
 	jp BlockChangeForPlayer
+
+RunRescueCritter::
+	ld a, BlockType_Floor
+	jp BlockChangeForPlayer

@@ -24,6 +24,7 @@ palette terrain_palette
 +Floor
 w 0,2
 visitable
+class Paintable
 
 palette wall_palette
 
@@ -140,12 +141,16 @@ w 12,1
 +Paint
 palette purple_palette
 visitable
+class Paintable
 w 0,6
 
 +EnemyPaint
 palette orange_palette
 visitable
+class Paintable
 w 4,6
+
+marker End
 
 #######################################
 # Special floors
@@ -213,6 +218,12 @@ w 4,4
 palette orange_palette
 When Above, RunBlockBomb
 w 0,5
+
++RescueCritter
+palette purple_palette
+When Above, RunRescueCritter
+w 8,6
+visitable
 
 marker EndSpecialFloor
 

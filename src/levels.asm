@@ -17,6 +17,7 @@
 
 include "include/hardware.inc/hardware.inc"
 include "include/leveldata.inc"
+include "res/block_enum.inc"
 
 SECTION "Level Load", ROM0
 
@@ -59,6 +60,13 @@ StartLevel::
 SECTION "Level Data", ROMX
 
 TestLevel:
+;	db LC_RECT, 20,20, 15, 15
+;	db LC_TYPE, LEVEL_AREA_2
+;	db LC_RECT, 35,20, 5, 15
+
 	db LC_RECT, 4, 4, 56, 56
-	db LC_FILL_PLACEHOLDERS
+
+	db LC_ADD_WALLS
+	db LC_PUT_ANYWHERE_VISITED, 20, BlockType_RescueCritter
+	db LC_ADD_FLOORS
 	db LC_END

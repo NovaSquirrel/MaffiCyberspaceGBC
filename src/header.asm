@@ -89,7 +89,7 @@ SECTION "Header", ROM0[$100]
 SECTION "Entry point", ROM0
 
 EntryPoint:
-	ld sp, Playfield
+	ld sp, StackEnd
 
 	push af
 	; Clear HRAM

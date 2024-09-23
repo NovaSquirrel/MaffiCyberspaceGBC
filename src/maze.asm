@@ -26,6 +26,11 @@ def FLOOD_VISITED = 128
 def FloodFillReadIndex  equs "temp1"
 def FloodFillWriteIndex equs "temp2"
 def RectFillValue       equs "temp3"
+
+def Arg1                equs "temp1"
+def Arg2                equs "temp2"
+def Arg3                equs "temp4"
+
 def CurrentTileValue    equs "temp8"
 
 ; .--------------------------------------------------------
@@ -86,8 +91,12 @@ LoadLevelCommands:
 	dw LevelCommand_End
 	dw LevelCommand_Type
 	dw LevelCommand_Rect
+	dw LevelCommand_RectCompact
 	dw LevelCommand_Single
-	dw LevelCommand_FillPlaceholders
+	dw LevelCommand_AddWalls
+	dw LevelCommand_AddFloors
+	dw LevelCommand_PutAnywhere
+	dw LevelCommand_PutWithinRect
 
 ; ---------------------------------------------------------
 
@@ -120,6 +129,39 @@ LevelCommand_Rect:
 
 ; ---------------------------------------------------------
 
+LevelCommand_RectCompact:
+	ld a, [hl] ; XY
+	and $f0    ; xxxx0000
+	rrca       ; 0xxxx000
+	rrca       ; 00xxxx00
+	ld d, a ; x
+
+	ld a, [hl+] ; XY
+	and $0f     ; 0000yyyy
+	add a       ; 000yyyy0
+	add a       ; 00yyyy00
+	ld e, a ; y
+
+	ld a, [hl]  ; WH
+	and $f0     ; xxxx0000
+	rrca        ; 0xxxx000
+	rrca        ; 00xxxx00
+	ld b, a ; w
+
+	ld a, [hl+] ; WH
+	and $0f     ; 0000yyyy
+	add a       ; 000yyyy0
+	add a       ; 00yyyy00
+	ld c, a ; h
+
+	push hl
+	ldh a, [CurrentTileValue]
+	call RectFill
+	pop hl
+	jp LoadLevelLoop
+
+; ---------------------------------------------------------
+
 LevelCommand_Single:
 	ld a, [hl+] ; x
 	ld d, a
@@ -134,7 +176,7 @@ LevelCommand_Single:
 
 ; ---------------------------------------------------------
 
-LevelCommand_FillPlaceholders:
+LevelCommand_AddWalls:
 	push hl
 	; -----------------------------------------------------
 	; Add walls to the ground tiles that were placed
@@ -244,11 +286,17 @@ FixMazeBackward:
 .skip:
 	bit 4, h ; Will be 0 at Playfield-1
 	jr nz, FixMazeBackward
+	pop hl
+	jp LoadLevelLoop
 
+; ---------------------------------------------------------
+
+LevelCommand_AddFloors:
 	; -----------------------------------------------------
 	; Has the maze been fixed well enough?
 	; Also apply autotiling, and add items to the floor
 	; -----------------------------------------------------
+	push hl
 
 	ld hl, Playfield
 	ld bc, 0 ; Floor counter
@@ -325,8 +373,95 @@ ReturnFromAddFloors:
 	jr z, CountVisitedUnvisited
 .done:
 
-	SkipMe2:
 	pop hl
+	jp LoadLevelLoop
+
+; -----------------------------------------------------------------------------
+
+LevelCommand_PutAnywhere::
+	ld a, [hl+]
+	ldh [Arg1], a ; Count
+	ld a, [hl+]
+	ldh [CurrentTileValue], a ; Type
+	push hl
+
+	ld d, 255     ; Eventually fail
+.Try:
+	call RandomByteLCG
+
+	and $0f
+	or HIGH(Playfield)
+	ld h, a
+	call RandomByte
+	and %00111100
+	ld l, a
+
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	; See if toggling some of the bits can help!
+	ld a, h
+	xor %00001000
+	ld h, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	ld a, l
+	xor %00100000
+	ld l, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	ld a, h
+	xor %00000100
+	ld h, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	ld a, l
+	xor %00010000
+	ld l, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	ld a, h
+	xor %00000010
+	ld h, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	ld a, l
+	xor %00001000
+	ld l, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	dec d ; Use up one try
+	jr nz, .Try
+	jr .Fail
+.Good:
+	ldh a, [CurrentTileValue]
+	ld [hl], a
+
+	ldh a, [Arg1] ; Remove 1 from the count
+	dec a
+	ldh [Arg1], a
+	jr nz, .Try   ; More left to make?
+
+.Fail:
+	pop hl
+	jp LoadLevelLoop	
+
+; -----------------------------------------------------------------------------
+
+LevelCommand_PutWithinRect::
 	jp LoadLevelLoop
 
 ; -----------------------------------------------------------------------------

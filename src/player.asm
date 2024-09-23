@@ -384,7 +384,11 @@ RunPlayer::
 			ld h, a
 			call MapPointerLH_XY
 			ld a, [hl]
-			cp BlockType_Floor
+			push hl
+			get_block_flags
+			pop hl
+			and BLOCK_CLASS_MASK
+			cp BlockClass_Paintable
 			ld a, BlockType_Paint
 			call z, BlockChangeForPlayer
 	.NoPaintMap:
@@ -817,11 +821,11 @@ RollingCollisionXYAdjustForDirection:
 ; Right
 	db 8-(ROLLING_COLLISION_WIDTH/2)+6, 31-(ROLLING_COLLISION_HEIGHT/2)
 ; Down
-	db 8-(ROLLING_COLLISION_WIDTH/2), 31-(ROLLING_COLLISION_HEIGHT/2)+6
+	db 8-(ROLLING_COLLISION_WIDTH/2), 31-(ROLLING_COLLISION_HEIGHT/2)+6+2
 ; Left
 	db 8-(ROLLING_COLLISION_WIDTH/2)-6, 31-(ROLLING_COLLISION_HEIGHT/2)
 ; Up
-	db 8-(ROLLING_COLLISION_WIDTH/2), 31-(ROLLING_COLLISION_HEIGHT/2)-6
+	db 8-(ROLLING_COLLISION_WIDTH/2), 31-(ROLLING_COLLISION_HEIGHT/2)-6-2
 
 ; Player frames
 	rsreset
