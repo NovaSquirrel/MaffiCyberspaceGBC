@@ -22,10 +22,42 @@ def LC_ADD_WALLS             rw 1 ;
 def LC_ADD_FLOORS            rw 1 ; 
 
 ; Put a tile of a given type *somewhere* in the maze; should happen after LC_ADD_WALLS
-def LC_PUT_ANYWHERE_VISITED  rw 1 ; type, count
+def LC_PUT_ANYWHERE_VISITED  rw 1 ; count, type
 
 ; Put a tile of a given type *somewhere* within a rectangle, on a visited tile; should happen after LC_ADD_WALLS
-def LC_PUT_WITHIN_RECT       rw 1 ; xy, wh, type, count
+def LC_PUT_WITHIN_RECT       rw 1 ; xy, wh, count, type
+
+
+; ---------------------------------------------------------
+
+MACRO LevelRect ; X, Y, W, H
+	IF ((\1 % 4) == 0) && ((\2 % 4) == 0) && ((\3 % 4) == 0) && ((\4 % 4) == 0)
+		db LC_COMPACT_RECT, ((\1/4)<<4)|(\2/4), ((\3/4)<<4)|(\4/4)
+	ELSE
+		db LC_RECT, \1, \2, \3, \4
+	ENDC
+ENDM
+
+MACRO LevelSingle ; X, Y
+	db LC_SINGLE, \1, \2
+ENDM
+
+MACRO LevelPutWithinRect ; X, Y, W, H, Count, Type
+	IF ((\1 % 4) == 0) && ((\2 % 4) == 0) && ((\3 % 4) == 0) && ((\4 % 4) == 0)
+		db LC_PUT_WITHIN_RECT, ((\1/4)<<4)|(\2/4), ((\3/4-1)<<4)|(\4/4-1)
+		db \5, \6|128
+	ELSE
+		fail "LevelPutWithinRect requires parameters that are a multiple of 4"
+	ENDC
+ENDM
+
+MACRO LevelPutAnywhere ; Count, Type
+	db LC_PUT_ANYWHERE_VISITED, \1, \2|128
+ENDM
+
+MACRO LevelType ; Count, Type
+	db LC_TYPE, \1
+ENDM
 
 ; ---------------------------------------------------------
 def LEVEL_AREA_1 EQUS "BlockType_PlaceholderArea1"

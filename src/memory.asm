@@ -27,6 +27,10 @@ temp5:: ds 1
 temp6:: ds 1
 temp7:: ds 1
 temp8:: ds 1
+temp9:: ds 1
+temp10:: ds 1
+temp11:: ds 1
+temp12:: ds 1
 IsNotGameBoyColor:: ds 1 ; Zero if it IS a Game Boy Color, nonzero if not
 framecount:: ds 1
 RunOamDMA::  ds 8 ; OAM DMA routine

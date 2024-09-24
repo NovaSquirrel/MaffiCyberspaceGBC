@@ -228,7 +228,6 @@ RunPlayer::
 	jr c, .NoSpecialFloor
 	cp BlockMarker_EndSpecialFloor - BlockMarker_SpecialFloor
 	jr nc, .NoSpecialFloor
-		ld b,b
 		push hl
 		add a
 		ld hl, BlockRoutinesAbove

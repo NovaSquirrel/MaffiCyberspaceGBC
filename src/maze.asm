@@ -25,13 +25,23 @@ def FLOOD_VISITED = 128
 
 def FloodFillReadIndex  equs "temp1"
 def FloodFillWriteIndex equs "temp2"
-def RectFillValue       equs "temp3"
 
+; Temporary state
 def Arg1                equs "temp1"
 def Arg2                equs "temp2"
-def Arg3                equs "temp4"
+def Arg3                equs "temp3"
 
-def CurrentTileValue    equs "temp8"
+def RectX               equs "temp1"
+def RectY               equs "temp2"
+def RandomXMask         equs "temp3"
+def RandomXLimit        equs "temp4"
+def RandomYMask         equs "temp5"
+def RandomYLimit        equs "temp6"
+
+def RectFillValue       equs "temp1"
+
+; State held across commands
+def CurrentTileValue    equs "temp12"
 
 ; .--------------------------------------------------------
 ; | Runs through all of the commands in a level
@@ -130,6 +140,15 @@ LevelCommand_Rect:
 ; ---------------------------------------------------------
 
 LevelCommand_RectCompact:
+	call DE_NybblesTimesFour
+	call BC_NybblesTimesFour
+	push hl
+	ldh a, [CurrentTileValue]
+	call RectFill
+	pop hl
+	jp LoadLevelLoop
+
+DE_NybblesTimesFour:
 	ld a, [hl] ; XY
 	and $f0    ; xxxx0000
 	rrca       ; 0xxxx000
@@ -141,7 +160,9 @@ LevelCommand_RectCompact:
 	add a       ; 000yyyy0
 	add a       ; 00yyyy00
 	ld e, a ; y
+	ret
 
+BC_NybblesTimesFour:
 	ld a, [hl]  ; WH
 	and $f0     ; xxxx0000
 	rrca        ; 0xxxx000
@@ -153,12 +174,17 @@ LevelCommand_RectCompact:
 	add a       ; 000yyyy0
 	add a       ; 00yyyy00
 	ld c, a ; h
+	ret
 
-	push hl
-	ldh a, [CurrentTileValue]
-	call RectFill
-	pop hl
-	jp LoadLevelLoop
+DE_Nybbles:
+	ld a, [hl]
+	and $f0
+	swap a
+	ld d, a
+	ld a, [hl+]
+	and $0f
+	ld e, a
+	ret
 
 ; ---------------------------------------------------------
 
@@ -385,10 +411,9 @@ LevelCommand_PutAnywhere::
 	ldh [CurrentTileValue], a ; Type
 	push hl
 
-	ld d, 255     ; Eventually fail
+	ld d, 255     ; Number of tries remaining
 .Try:
-	call RandomByteLCG
-
+	call RandomByteLCG ; Trashes HL
 	and $0f
 	or HIGH(Playfield)
 	ld h, a
@@ -396,11 +421,13 @@ LevelCommand_PutAnywhere::
 	and %00111100
 	ld l, a
 
+	; Is this random position acceptable?
 	ld a, [hl]
 	cp LEVEL_AREA_1|FLOOD_VISITED
 	jr nc, .Good
 
 	; See if toggling some of the bits can help!
+	; Unlike LevelCommand_PutWithinRect, I make drastic changes to the position by toggling the high bits, moving down to lower ones
 	ld a, h
 	xor %00001000
 	ld h, a
@@ -450,19 +477,177 @@ LevelCommand_PutAnywhere::
 	ldh a, [CurrentTileValue]
 	ld [hl], a
 
-	ldh a, [Arg1] ; Remove 1 from the count
+	ldh a, [Arg1] ; Remove 1 from the count for how many to make
 	dec a
 	ldh [Arg1], a
 	jr nz, .Try   ; More left to make?
+	pop hl
+	jp LoadLevelLoop
 
 .Fail:
+	; Panic and just scan the level for a place to put things, I guess!
+	; It's better than an unsolvable level
+	ld b,b ; Breakpoint because this is not good
+
+	ldh a, [Arg1]
+	ld b, a ; Count
+	ld hl, Playfield
+.FailLoop:
+	ld a, [hl+]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr c, :+
+		dec hl
+		ldh a, [CurrentTileValue]
+		ld [hl+], a
+		dec b
+		jr z, .FailDone
+	:
+	bit 4, h ; Will be 0 at PlayfieldEnd
+	jr nz, .FailLoop
+.FailDone:
+
 	pop hl
 	jp LoadLevelLoop	
 
 ; -----------------------------------------------------------------------------
 
 LevelCommand_PutWithinRect::
+	call DE_NybblesTimesFour
+	ld a, d
+	ldh [RectX], a ; X
+	ld a, e
+	ldh [RectY], a ; Y
+
+	call DE_Nybbles
+
+	; Get X mask and limit
+	ld bc, .RandomMask
+	call .BCPlusD
+	ldh [RandomXMask], a
+	ld bc, .RandomLimit
+	call .BCPlusD
+	ldh [RandomXLimit], a
+
+	; Get Y mask and limit
+	ld bc, .RandomMask
+	call .BCPlusE
+	ldh [RandomYMask], a
+	ld bc, .RandomLimit
+	call .BCPlusE
+	ldh [RandomYLimit], a
+
+	ld a, [hl+]
+	ldh [Arg1], a ; Count
+	ld a, [hl+]
+	ldh [CurrentTileValue], a ; Type
+	xor a
+	ldh [Arg3], a ; Try count (counts upwards)
+
+	; ---------------------------------
+	push hl
+.Try:
+	; Get an X coordinate
+	ldh a, [RandomXMask]
+	ld d, a
+	ldh a, [RandomXLimit]
+	ld e, a
+:	call RandomByteLCG
+	and d
+	cp e
+	jr nc, :-
+	ldh [Arg2], a ; Save for a bit
+
+	; Get a Y coordinate
+	ldh a, [RandomYMask]
+	ld d, a
+	ldh a, [RandomYLimit]
+	ld e, a
+:	call RandomByteLCG
+	and d
+	cp e
+	jr nc, :-
+
+	; Add the random offsets to the base
+	ld e, a
+	ldh a, [RectX]
+	add e
+	ld e, a
+
+	ldh a, [Arg2]
+	ld d, a
+	ldh a, [RectY]
+	add d
+	ld d, a
+
+	call MapPointerDE_XY
+
+	; Is this random position acceptable?
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	; Check if toggling some of the bits in the pointer nudges it over to a valid tile
+	ld a, l
+	xor %00000001
+	ld l, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	ld a, l
+	xor %01000000
+	ld l, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	ld a, l
+	xor %00000010
+	ld l, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	ld a, l
+	xor %10000000
+	ld l, a
+	ld a, [hl]
+	cp LEVEL_AREA_1|FLOOD_VISITED
+	jr nc, .Good
+
+	; Add one try, fail if we wrap around to zero
+	ldh a, [Arg3]
+	inc a
+	ldh [Arg3], a
+	jr nz, .Try
+	jp LevelCommand_PutAnywhere.Fail
+.Good:
+	; Place a tile in the chosen spot!!
+	ldh a, [CurrentTileValue]
+	ld [hl], a
+
+	ldh a, [Arg1] ; Remove 1 from the count for how many to make
+	dec a
+	ldh [Arg1], a
+	jr nz, .Try   ; More left to make?
+
+	pop hl
 	jp LoadLevelLoop
+
+.BCPlusD:
+	ld a, d
+	jr .BCPlusA
+.BCPlusE:
+	ld a, e
+.BCPlusA:
+	add_bc_a
+	ld a, [bc]
+	ret
+
+.RandomMask:  ; Number to AND the random byte with
+	db  3, 7, 15, 15, 31, 31, 31, 31, 63, 63, 63, 63, 63, 63, 63, 63
+.RandomLimit: ; Number to reject a random number for being greater or equal to
+	db  4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64
 
 ; -----------------------------------------------------------------------------
 
@@ -640,7 +825,29 @@ AddWallHere:
 ; ---------------------------------------------------------
 ; HL = Playfield position
 ; DE = Queue pointer
-FloodFillAddToQueue:
+;FloodFillAddToQueue:
+;	set 7, [hl] ; Mark as visited
+;
+;	; Write to the queue
+;	ld a, h
+;	ld [de], a ; FloodQueueHi
+;	inc d
+;	ld a, l
+;	ld [de], a ; FloodQueueLo
+;	dec d
+;
+;	; Next entry
+;	inc e
+;
+;	; Are we out of space?
+;	ldh a, [FloodFillReadIndex]
+;	cp e
+;	ret nz
+;	ld b,b ; Breakpoint, because this is a problem!!
+;	ret
+
+; Macro version, because this is a very frequently called routine!
+MACRO FloodFillAddToQueueMacro
 	set 7, [hl] ; Mark as visited
 
 	; Write to the queue
@@ -653,14 +860,8 @@ FloodFillAddToQueue:
 
 	; Next entry
 	inc e
-
-	; Are we out of space?
-	ldh a, [FloodFillReadIndex]
-	cp e
-	ret nz
-	ld b,b ; Breakpoint, because this is a problem!!
-	ret
-
+	; No error checking here; hopefully it isn't needed!
+ENDM
 
 ; ---------------------------------------------------------
 ; HL = Playfield position
@@ -671,11 +872,11 @@ FloodFillPlayfield:
 	ldh [FloodFillWriteIndex], a ; Will be 1 after the first byte is written
 
 	ld de, FloodQueueHi          ; D will point at FloodQueueHi and FloodQueueLo
-	call FloodFillAddToQueue     ; Start off the buffer with the initial position (passed in with HL)
+	FloodFillAddToQueueMacro     ; Start off the buffer with the initial position (passed in with HL)
 	ld e, 0                      ; Go into the loop reading the first byte
 
 .loop:
-	; Read pointer from the queue
+	; Read maze pointer from the queue
 	ld a, [de] ; High half
 	ld h, a
 	inc d
@@ -697,7 +898,8 @@ FloodFillPlayfield:
 		ld c, a
 		ld a, [bc]
 		bit 6, a ; Is this block visitable?
-		call nz, FloodFillAddToQueue
+		jr z, :+
+		FloodFillAddToQueueMacro
 	:
 	inc l
 
@@ -710,12 +912,12 @@ FloodFillPlayfield:
 		ld c, a
 		ld a, [bc]
 		bit 6, a ; Is this block visitable?
-		call nz, FloodFillAddToQueue
+		jr z, :+
+		FloodFillAddToQueueMacro
 	:
 	dec l
 
 	; Up
-	push hl
 	push hl
 	ld bc, -64
 	add hl, bc
@@ -726,12 +928,12 @@ FloodFillPlayfield:
 		ld c, a
 		ld a, [bc]
 		bit 6, a ; Is this block visitable?
-		call nz, FloodFillAddToQueue
+		jr z, :+
+		FloodFillAddToQueueMacro
 	:
-	pop hl
 
 	; Down
-	ld bc, 64
+	ld bc, 64+64
 	add hl, bc
 	ld a, [hl]
 	bit 7, a     ; Already visited?
@@ -740,7 +942,8 @@ FloodFillPlayfield:
 		ld c, a
 		ld a, [bc]
 		bit 6, a ; Is this block visitable?
-		call nz, FloodFillAddToQueue
+		jr z, :+
+		FloodFillAddToQueueMacro
 	:
 	pop hl
 
@@ -765,11 +968,68 @@ FloodFillPlayfield:
 RectFill:
 	ldh [RectFillValue], a
 	call MapPointerDE_XY
+
+	bit 0, b
+	jr z, RectFillDivisibleBy2 ; If width is even, do a little bit of loop unrolling
 .another_row:
 	push hl
 	push bc
 	ldh a, [RectFillValue]
 .row:
+	ld [hl+], a
+	dec b
+	jr nz, .row
+	pop bc
+	pop hl
+
+	; Move to the next row
+	ld a, l
+	add %01000000
+	ld l, a
+	jr nc, :+
+		inc h
+	:
+	dec c
+	jr nz, .another_row
+	ret
+
+RectFillDivisibleBy2:
+	srl b
+	bit 0, b
+	jr z, RectFillDivisibleBy4 ; If width is a multiple of 4, do a little bit more loop unrolling
+.another_row:
+	push hl
+	push bc
+	ldh a, [RectFillValue]
+.row:
+	ld [hl+], a
+	ld [hl+], a
+	dec b
+	jr nz, .row
+	pop bc
+	pop hl
+
+	; Move to the next row
+	ld a, l
+	add %01000000
+	ld l, a
+	jr nc, :+
+		inc h
+	:
+	dec c
+	jr nz, .another_row
+	ret
+
+RectFillDivisibleBy4:
+	srl b
+.another_row:
+	push hl
+	push bc
+	ldh a, [RectFillValue]
+.row:
+	ld [hl+], a
+	ld [hl+], a
+	ld [hl+], a
 	ld [hl+], a
 	dec b
 	jr nz, .row
