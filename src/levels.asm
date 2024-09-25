@@ -64,9 +64,10 @@ TestLevel:
 ;	db LC_TYPE, LEVEL_AREA_2
 ;	db LC_RECT, 35,20, 5, 15
 
-	db LC_RECT, 4, 4, 56, 56
+	LevelRect 4, 4, 56, 56
+	LevelAddWalls WALL_93P
+	LevelPutAnywhere 5, BlockType_RescueCritter
+	LevelPutWithinRect 8, 8, 16, 16, 5, BlockType_EnemyPaint
+	LevelAddFloors FLOOR_RARE_STARS
 
-	db LC_ADD_WALLS
-	db LC_PUT_ANYWHERE_VISITED, 20, BlockType_RescueCritter
-	db LC_ADD_FLOORS
 	db LC_END

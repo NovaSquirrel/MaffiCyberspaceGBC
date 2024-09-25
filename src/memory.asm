@@ -134,9 +134,7 @@ ActorData::
 FloodQueueLo::
 	ds 256
 ; These will be aligned to the start of a page
-PlaceholderPointers_AddFloors::
-	ds 8*4
-PlaceholderPointers_AddWalls::
+PlaceholderPointers::
 	ds 8*4
 PlaceholderPointers_End::
 

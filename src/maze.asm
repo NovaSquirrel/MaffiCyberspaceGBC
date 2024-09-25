@@ -55,25 +55,9 @@ LoadLevel::
 	push hl
 
 	ld a, $C3 ; JP opcode
-	ld c, PlaceholderPointers_End-PlaceholderPointers_AddFloors
-	ld hl, PlaceholderPointers_AddFloors
+	ld c, PlaceholderPointers_End-PlaceholderPointers
+	ld hl, PlaceholderPointers
 	rst MemsetSmall
-
-	ld a, LOW(FloorSomeStars)
-	ld [PlaceholderPointers_AddFloors+4*0+1], a
-	ld [PlaceholderPointers_AddFloors+4*1+1], a
-	ld a, HIGH(FloorSomeStars)
-	ld [PlaceholderPointers_AddFloors+4*0+2], a
-	ld [PlaceholderPointers_AddFloors+4*1+2], a
-
-	ld a, LOW(WallChance75Percent)
-	ld [PlaceholderPointers_AddWalls+4*0+1], a
-	ld a, HIGH(WallChance75Percent)
-	ld [PlaceholderPointers_AddWalls+4*0+2], a
-	ld a, LOW(WallChance25Percent)
-	ld [PlaceholderPointers_AddWalls+4*1+1], a
-	ld a, HIGH(WallChance25Percent)
-	ld [PlaceholderPointers_AddWalls+4*1+2], a
 
 	pop hl
 
@@ -203,6 +187,25 @@ LevelCommand_Single:
 ; ---------------------------------------------------------
 
 LevelCommand_AddWalls:
+	; Fill in the jump table for handling the placeholder tiles
+	ld de, PlaceholderPointers+1
+:	ld a, [hl+]
+	add a
+	push af
+	ld bc, PlaceholderPointerTable_Walls
+	add_bc_a
+	ld a, [bc] ; Get low byte
+	ld [de], a
+	inc bc
+	inc e
+	ld a, [bc] ; Get high byte
+	ld [de], a
+	inc e
+	inc e
+	inc e
+	pop af
+	jr nc, :-
+
 	push hl
 	; -----------------------------------------------------
 	; Add walls to the ground tiles that were placed
@@ -216,9 +219,8 @@ AddWalls:
 		; Jump to the wall placement function for that specific level area
 		add a ; Multiply by 4 because it's slightly faster than multiplying by 3
 		add a
-		add PlaceholderPointers_AddWalls-PlaceholderPointers_AddFloors
-		assert LOW(PlaceholderPointers_AddFloors) == 0 
-		ld h, HIGH(PlaceholderPointers_AddWalls)
+		assert LOW(PlaceholderPointers) == 0 
+		ld h, HIGH(PlaceholderPointers)
 		ld l, a
 		jp hl
 	ReturnFromAddWalls:
@@ -318,6 +320,25 @@ FixMazeBackward:
 ; ---------------------------------------------------------
 
 LevelCommand_AddFloors:
+	; Fill in the jump table for handling the placeholder tiles
+	ld de, PlaceholderPointers+1
+:	ld a, [hl+]
+	add a
+	push af
+	ld bc, PlaceholderPointerTable_Floors
+	add_bc_a
+	ld a, [bc] ; Get low byte
+	ld [de], a
+	inc bc
+	inc e
+	ld a, [bc] ; Get high byte
+	ld [de], a
+	inc e
+	inc e
+	inc e
+	pop af
+	jr nc, :-
+
 	; -----------------------------------------------------
 	; Has the maze been fixed well enough?
 	; Also apply autotiling, and add items to the floor
@@ -356,8 +377,8 @@ CountVisitedUnvisited:
 	jr c, .NotPlaceholder
 		add a ; Multiply by 4 because it's slightly faster than multiplying by 3
 		add a
-		assert LOW(PlaceholderPointers_AddFloors) == 0 
-		ld d, HIGH(PlaceholderPointers_AddFloors)
+		assert LOW(PlaceholderPointers) == 0 
+		ld d, HIGH(PlaceholderPointers)
 		ld e, a
 		push de
 		ret
@@ -747,8 +768,22 @@ FixUnvisitedFloor:
 
 
 ; ---------------------------------------------------------
+PlaceholderPointerTable_Floors:
+	dw FloorAllNormal
+	dw FloorRareStars
+	dw FloorSomeStars
+
 FloorAllNormal:
 	ld [hl], BlockType_Floor
+	jp ReturnFromAddFloors
+FloorRareStars:
+	ld [hl], BlockType_Floor
+	push hl
+	call RandomByteLCG
+	pop hl
+	cp 5
+	jp nc, ReturnFromAddFloors
+	ld [hl], BlockType_Star
 	jp ReturnFromAddFloors
 FloorSomeStars:
 	ld [hl], BlockType_Floor
@@ -761,6 +796,16 @@ FloorSomeStars:
 	jp ReturnFromAddFloors
 
 ; ---------------------------------------------------------
+PlaceholderPointerTable_Walls:
+	dw WallChance0Pecent
+	dw WallChance25Percent
+	dw WallChance50Percent
+	dw WallChance75Percent
+	dw WallChance93Percent
+	dw WallGridPattern
+
+WallChance0Pecent:
+	jp ReturnFromAddWalls
 WallChance25Percent:
 	call RandomByte
 	cp 192
@@ -781,10 +826,14 @@ WallChance93Percent:
 	cp 16
 	call nc, AddWallHere
 	jp ReturnFromAddWalls
+WallGridPattern:
+	ld a, BlockType_Wall
+	ld [de], a
+	jp ReturnFromAddWalls
 
-; Add a wall at [HL] and put a block in a random direction
+; Add a wall at [DE] and put a block in a random direction
 AddWallHere:
-	; Place a wall at [HL]
+	; Place a wall at [DE]
 	ld h, d
 	ld l, e
 	ld [hl], BlockType_Wall
