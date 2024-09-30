@@ -265,7 +265,7 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	call RunActors
 
 	ld a, [framecount]
-	and 63
+	and 127
 	call z, SpawnEnemy
 
 	; Randomly swap two actors to implement flickering

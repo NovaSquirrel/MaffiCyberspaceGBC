@@ -197,7 +197,7 @@ EntryPoint:
 	ldh [rBGP], a
 	ld a, %00101111 ; transparent, black, dark gray, white
 	ldh [rOBP0], a
-	ld a, %00011011 ; transparent, dark gray, light gray, white
+	ld a, %00011111 ; transparent, dark gray, light gray, white
 	ldh [rOBP1], a
 
 	; Results in a lot of closed-off tiles

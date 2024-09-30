@@ -497,11 +497,14 @@ ActorFollowingCritter::
 	adc b
 	ld [hl], a ; actor_pxh
 
+	switch_hl_to_field actor_pxh, actor_timer
+	inc [hl]
+
 	; Increase a timer for a bit and then remove the actor
-	switch_hl_to_field actor_pxh, actor_var1
+	switch_hl_to_field actor_timer, actor_var1
 	inc [hl]
 	ld a, [hl]
-	cp 70
+	cp 90
 	jr c, :+
 		xor a
 		ld [de], a
