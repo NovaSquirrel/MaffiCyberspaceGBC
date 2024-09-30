@@ -68,14 +68,6 @@ RunRescueCritter::
 	inc a
 	ld [HaveCritterActive], a
 
-	; Update status bar
-	wait_vram
-	ld a, [RescueCritterCount]
-	dec a
-	ld [RescueCritterCount], a
-	add $f8
-	ld [_SCRN1+3], a
-
 	call MapPointerHL_To_XY_DE
 	ld a, d
 	ldh [temp1], a
@@ -120,4 +112,12 @@ RunBlockExit::
 	ld [hl], 1 ; Change the state to something nonzero to signal it should go to the exit
 	switch_hl_to_field actor_state, actor_var1
 	ld [hl], 0 ; Will use this as a timer
+
+	; Update status bar
+	wait_vram
+	ld a, [RescueCritterCount]
+	dec a
+	ld [RescueCritterCount], a
+	add $f8
+	ld [_SCRN1+3], a
 	ret
