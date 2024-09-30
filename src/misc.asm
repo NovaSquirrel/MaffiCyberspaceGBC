@@ -328,6 +328,22 @@ MapPointerDE_XY::
 	ld h, a
 	ret
 
+MapPointerHL_To_XY_DE::
+	ld a, l
+	and 63
+	ld d, a
+
+	ld e, h
+	ld a, l ; ???? yyyy | yyxx xxxx 
+	add a
+	rl e    ; ???y yyyy | yxxx xxx0 
+	add a
+	rl e	; ??yy yyyy | xxxx xx00 
+	ld a, e
+	and 63
+	ld e, a
+	ret
+
 ; Sets HL to a pointer at a point on the map where B=X and C=Y
 MapPointerBC_XY::
            ;     C           A
@@ -563,6 +579,23 @@ ClearActorHL::
 	ld [hl+], a
 	ld [hl+], a
 	pop hl
+	ret
+
+; Returns carry not set if found
+FindFirstActorOfTypeB::
+	ld hl, ActorData
+FindActorOfTypeB::
+	ld a, [hl]
+	and 127 ; Mask off the direction bit
+	cp b
+	jr z, .Found
+	ld a, l
+	add ACTOR_SIZE
+	ld l, a
+	jr nz, FindActorOfTypeB
+	ret ; Will have carry set
+.Found
+	or a ; Clear carry
 	ret
 
 ; Input: B (camera position high byte), A (entity position high byte),

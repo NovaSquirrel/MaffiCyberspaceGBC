@@ -72,24 +72,28 @@ DoUpdateRow::    ds 1
 DoUpdateColumn:: ds 1
 ParallaxSource:: ds 2
 
-PreviousOAMWrite:: ds 1
 
 LevelID:: ds 1
 
 PlayerHealth:: ds 1
 
 PaintAmount::                 ds 1 ; The paint bar amount
+ZeroWhenLevelStarts:: ;------------------------------------
 PaintAmountShownOnscreen::    ds 1 ; For detecting when to update the bar
 PaintShootDirection::         ds 1 ; 0=right, 1=down right, 2=down, etc.
 PaintShootDiagonalDirection:: ds 1
 PaintShootDirectionLock::     ds 1
 PaintShotID::                 ds 1 ; Increments every shot
-
+DMG_PlayerAnimationFrame_Page:: ds 1 ; For double buffering
+PreviousOAMWrite::            ds 1
+DMG_PlayerDrawDirection::     ds 1 ; Set when the animation frame copy finishes; used for the actual positioning/flipping decisions in DrawPlayer
+HaveCritterActive::           ds 1
 
 ; Timers - note the code in player.asm that will need to be updated if this is changed around
 PaintShootDiagonalTimer:: ds 1
 PaintShootingTimer::      ds 1
 PlayerInvincibleTimer::   ds 1
+ZeroWhenLevelStarts_End:: ;--------------------------------
 PaintRefillCooldown::     ds 1
 
 
@@ -101,11 +105,16 @@ DMG_PlayerAnimationFrame_Destination2:: ds 1 ; Low byte of the address of the se
 DMG_PlayerAnimationFrame_Source2::      ds 2 ; Address of the second tile to copy into the destination
 DMG_PlayerAnimationFrame_Destination3:: ds 1 ; Low byte of the address of the third tile to write (high byte is always $80)
 DMG_PlayerAnimationFrame_Source3::      ds 2 ; Address of the third tile to copy into the destination
-DMG_PlayerAnimationFrame_Page::         ds 1 ; For double buffering
-DMG_PlayerDrawDirection::               ds 1 ; Set when the animation frame copy finishes; used for the actual positioning/flipping decisions in DrawPlayer
 DMG_BufferedPlayerDrawDirection::       ds 1 ; Set when the animation frame copy starts
 
 EnemyCount:: ds 1
+
+MazeExitX:: ds 1
+MazeExitY:: ds 1
+CritterXYList:: ds 7*2 ; Must not have more than 7
+RescueCritterCount:: ds 1
+
+UseBrighterPalettes:: ds 1 ; Use an alternative, brighter palette, for darker screens
 
 SECTION "ParallaxRAM", WRAM0, ALIGN[4]
 ParallaxShifts::

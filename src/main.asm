@@ -50,22 +50,12 @@ StartMainLoop::
 	; | Initialize gameplay variables
 	; '----------------------------------------------------
 	ld a, 255
-	ld hl, PaintAmount
-	ld [hl+], a ; PaintAmount
+	ld [PaintAmount], a ; PaintAmount
+	ld hl, ZeroWhenLevelStarts
+	ld bc, ZeroWhenLevelStarts_End-ZeroWhenLevelStarts
+	call memclear
 	xor a
-	ld [hl+], a ; PaintAmountShownOnscreen
-	ld [hl+], a ; PaintShootDirection
-	ld [hl+], a ; PaintShootDiagonalDirection
-	ld [hl+], a ; PaintShootDirectionLock
-	ld [hl+], a ; PaintShotID
-	ld [hl+], a ; HoldingPaintButton
-	ld [hl+], a ; PlayerShootDiagonalTimer
-	ld [hl+], a ; PlayerShootingTimer
-	ld [hl+], a ; PlayerInvincibleTimer
 	ld [PaintRefillCooldown], a
-	ld [PlayerDrawDirection], a
-	ld [DMG_PlayerAnimationFrame_Page], a
-	ld [PreviousOAMWrite], a
 
 	ld a, 32
 	ldh [PlayerPXH], a
@@ -114,16 +104,17 @@ StartMainLoop::
 	ld c, 20
 	call memset8
 	ld hl, _SCRN1+2 ; Critters left
-	ld a, $f8
+	ld a, $f6
 	ld [hl+], a
-	ld a, $f9
+	ld a, [RescueCritterCount]
+	add $f8
 	ld [hl+], a
 	ld hl, _SCRN1+6 ; Paint bar
 	ld a, $f5
 	ld c, 8
 	call memset8
 	inc l
-	ld a, $f6       ; Hearts
+	ld a, $f8       ; Hearts
 	ld c, 4
 	call memset8
 
@@ -273,11 +264,6 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	ld [rROMB0], a
 	call RunActors
 
-	call ClearPreviouslyUsedOAM
-	ldh a, [OAMWrite]
-	ld [PreviousOAMWrite], a
-
-
 	ld a, [framecount]
 	and 63
 	call z, SpawnEnemy
@@ -301,6 +287,25 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	inc d
 	call SwapSixteenBytes
 
+	; CPU usage check
+;	ld h, HIGH(OamBuffer)
+;	ldh a, [OAMWrite]
+;	ld l, a
+;	ldh a, [rLY]
+;	add 16
+;	ld [hl+], a
+;	ld a, 8
+;	ld [hl+], a
+;	ld a, $50
+;	ld [hl+], a
+;	xor a
+;	ld [hl+],a 
+;	ld a, l
+;	ldh [OAMWrite], a
+
+	call ClearPreviouslyUsedOAM
+	ldh a, [OAMWrite]
+	ld [PreviousOAMWrite], a
 	jp forever
 
 ; Swaps sixteen bytes starting from HL and DE

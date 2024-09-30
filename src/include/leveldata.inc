@@ -119,6 +119,7 @@ def WALL_NONE rb
 def WALL_25P rb
 def WALL_50P rb
 def WALL_75P rb
+def WALL_87P rb
 def WALL_93P rb
 def WALL_GRID rb
 

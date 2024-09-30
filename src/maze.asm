@@ -51,6 +51,8 @@ LoadLevel::
 	; Default settings
 	ld a, LEVEL_AREA_1
 	ldh [CurrentTileValue], a
+	xor a
+	ld [RescueCritterCount], a
 
 	push hl
 
@@ -251,8 +253,8 @@ NextColumn:
 	; -----------------------------------------------------
 
 	; TODO: use the actual starting location!!
-	ld d, 10
-	ld e, 10
+	ld d, 32
+	ld e, 32
 	call MapPointerDE_XY
 	ld [hl], BlockType_Floor
 	call FloodFillPlayfield
@@ -495,16 +497,47 @@ LevelCommand_PutAnywhere::
 	jr nz, .Try
 	jr .Fail
 .Good:
-	ldh a, [CurrentTileValue]
-	ld [hl], a
-
-	ldh a, [Arg1] ; Remove 1 from the count for how many to make
-	dec a
-	ldh [Arg1], a
+	call .PlaceTileAtRandomLocation
 	jr nz, .Try   ; More left to make?
 	pop hl
 	jp LoadLevelLoop
 
+; Common routine to place a tile after having picked a location for it, so that certain types can be treated specially
+.PlaceTileAtRandomLocation:
+	ldh a, [CurrentTileValue]
+	ld [hl], a
+
+	; Exits and critters to be rescued need to have their positions recorded
+	cp BlockType_Exit|128
+	jr nz, :+
+		call MapPointerHL_To_XY_DE
+		ld a, d
+		ld [MazeExitX], a
+		ld a, e
+		ld [MazeExitY], a
+		jr .ExitPlaceTileAtRandomLocation
+:	cp BlockType_RescueCritter|128
+	jr nz, :+
+		call MapPointerHL_To_XY_DE
+		ld a, [RescueCritterCount]
+		inc a
+		ld [RescueCritterCount], a
+		dec a
+		add a
+		ld hl, CritterXYList
+		add_hl_a
+		ld [hl], d
+		inc hl
+		ld [hl], e
+	:
+
+	.ExitPlaceTileAtRandomLocation:
+	ldh a, [Arg1] ; Remove 1 from the count for how many to make
+	dec a
+	ldh [Arg1], a
+	ret
+
+; -----------------------------------------------
 .Fail:
 	; Panic and just scan the level for a place to put things, I guess!
 	; It's better than an unsolvable level
@@ -526,7 +559,6 @@ LevelCommand_PutAnywhere::
 	bit 4, h ; Will be 0 at PlayfieldEnd
 	jr nz, .FailLoop
 .FailDone:
-
 	pop hl
 	jp LoadLevelLoop	
 
@@ -644,12 +676,7 @@ LevelCommand_PutWithinRect::
 	jp LevelCommand_PutAnywhere.Fail
 .Good:
 	; Place a tile in the chosen spot!!
-	ldh a, [CurrentTileValue]
-	ld [hl], a
-
-	ldh a, [Arg1] ; Remove 1 from the count for how many to make
-	dec a
-	ldh [Arg1], a
+	call LevelCommand_PutAnywhere.PlaceTileAtRandomLocation
 	jr nz, .Try   ; More left to make?
 
 	pop hl
@@ -688,9 +715,14 @@ IsWallAutotile:
 ; -----------------------------------------------------------------------------
 ; Try to fix a floor tile that wasn't reached by connecting it to a visited tile 2 tiles away
 FixUnvisitedFloor:
-	; Use a different order sometimes to mix things up
-	bit 1, l
+	; Randomly choose between four direction priorities
+	call RandomByte
+	and 3
 	jr z, .alternate_order
+	dec a
+	jr z, .alternate_order2
+	dec a
+	jr z, .alternate_order3
 
 	; Left
 	ld a, l
@@ -747,6 +779,64 @@ FixUnvisitedFloor:
 	jr nz, .fix_left
 	ret
 
+.alternate_order2:
+	; Right
+	ld a, l
+	inc l
+	inc l
+	bit 7, [hl]
+	jr nz, .fix_right
+
+	; Left
+	ld l, a
+	dec l
+	dec l
+	bit 7, [hl]
+	jr nz, .fix_left
+
+	; Up
+	ld de, 2-64-64
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_down
+
+	; Down
+	ld de, 64+64+64+64
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_up
+	ret
+
+.alternate_order3:
+	; Down
+	ld de, 64+64
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_down
+
+	; Up
+	ld de, -64-64-64-64
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_up
+
+	; Left
+	ld de, 64+64-2
+	add hl, de
+	bit 7, [hl]
+	jr nz, .fix_right
+
+	; Right
+	inc l
+	inc l
+	inc l
+	inc l
+	bit 7, [hl]
+	jr nz, .fix_left
+	ret
+
+; -------------------------------------
+
 .fix_left:
 	inc l
 	ld [hl], BlockType_Floor | 128
@@ -801,6 +891,7 @@ PlaceholderPointerTable_Walls:
 	dw WallChance25Percent
 	dw WallChance50Percent
 	dw WallChance75Percent
+	dw WallChance87Percent
 	dw WallChance93Percent
 	dw WallGridPattern
 
@@ -819,6 +910,11 @@ WallChance50Percent:
 WallChance75Percent:
 	call RandomByte
 	cp 64
+	call nc, AddWallHere
+	jp ReturnFromAddWalls
+WallChance87Percent:
+	call RandomByte
+	cp 32
 	call nc, AddWallHere
 	jp ReturnFromAddWalls
 WallChance93Percent:

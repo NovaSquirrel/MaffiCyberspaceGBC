@@ -128,6 +128,7 @@ DEF TILE_ID_ENEMY_SPAWNING EQU $1E
 DEF TILE_ID_PLAYER_FACE_RIGHT EQU 8
 DEF TILE_ID_PLAYER_FACE_DOWN EQU 10
 DEF TILE_ID_PAINTBRUSH_DOWN EQU 14
+DEF TILE_ID_CRITTER EQU 20
 
 ; .----------------------------------------------------------------------------
 ; | Game-specific macros
@@ -165,5 +166,62 @@ MACRO switch_hl_to_field
 		ld a, l
 		add \2 - \1
 		ld l, a
+	endc
+ENDM
+
+; This macro is meant for when HL is already pointing at one item within an actor,
+; and it will switch from one field to another. One cycle faster than the "add hl, de" way.
+; This macro incorporates [hl+] and [hl-].
+MACRO put_hl_and_switch_to_field
+	if \2 - \1 == 1
+		ld [hl+], a
+	elif \2 - \1 == 2 
+		ld [hl+], a
+		inc l
+	elif \2 - \1 == 3
+		ld [hl+], a
+		inc l
+		inc l
+	elif \2 - \1 == -1
+		ld [hl-], a
+	elif \2 - \1 == -2
+		ld [hl-], a
+		dec l
+	elif \2 - \1 == -3
+		ld [hl-], a
+		dec l
+		dec l
+	else
+		ld [hl], a
+		ld a, l
+		add \2 - \1
+		ld l, a
+	endc
+ENDM
+
+; This macro is meant for when HL is already pointing at one item within an actor,
+; and it will switch from one field to another. One cycle faster than the "add hl, de" way.
+; This macro incorporates [hl+] and [hl-].
+MACRO get_hl_and_switch_to_field
+	if \2 - \1 == 1
+		ld a, [hl+]
+	elif \2 - \1 == 2 
+		ld a, [hl+]
+		inc l
+	elif \2 - \1 == 3
+		ld a, [hl+]
+		inc l
+		inc l
+	elif \2 - \1 == -1
+		ld a, [hl-]
+	elif \2 - \1 == -2
+		ld a, [hl-]
+		dec l
+	elif \2 - \1 == -3
+		ld a, [hl-]
+		dec l
+		dec l
+	else
+		fail "Fields too far apart for get_hl_and_switch_hl_to_field"
 	endc
 ENDM

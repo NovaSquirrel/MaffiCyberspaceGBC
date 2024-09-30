@@ -19,6 +19,7 @@ include "include/hardware.inc/hardware.inc"
 include "include/macros.inc"
 include "include/defines.inc"
 include "res/block_enum.inc"
+include "res/actor_enum.inc"
 
 SECTION "BlockCode", ROM0
 
@@ -28,7 +29,6 @@ RunBlockBomb::
 RunBlockFire::
 RunBlockToggleButton::
 RunBlockSpring::
-RunBlockExit::
 RunBlockTeleporter::
 	ret
 RunBlockKey::
@@ -41,13 +41,15 @@ RunBlockHeart::
 	ld [PlayerHealth], a
 
 	; Refill the hearts in the status bar
+	push hl
 	ld hl, _SCRN1+14
 	wait_vram
-	ld a, $F6
+	ld a, $F8
 	ld [hl+], a
 	ld [hl+], a
 	ld [hl+], a
 	ld [hl+], a
+	pop hl
 
 	ld a, BlockType_Floor
 	jp BlockChangeForPlayer
@@ -60,5 +62,62 @@ RunBlockStar::
 	jp BlockChangeForPlayer
 
 RunRescueCritter::
+	ld a, [HaveCritterActive]
+	or a
+	ret nz
+	inc a
+	ld [HaveCritterActive], a
+
+	; Update status bar
+	wait_vram
+	ld a, [RescueCritterCount]
+	dec a
+	ld [RescueCritterCount], a
+	add $f8
+	ld [_SCRN1+3], a
+
+	call MapPointerHL_To_XY_DE
+	ld a, d
+	ldh [temp1], a
+	ld a, e
+	ldh [temp2], a
+
+	push hl
+	call FindFreeActorSlot
+	jr nc, .NoFreeActorSlot ; TODO: make room
+		call ClearActorHL
+		ld a, ActorType_FollowingCritter
+		ld [hl], a ; HL: actor_type
+
+		switch_hl_to_field actor_type, actor_pyl
+		ld a, $80
+		put_hl_and_switch_to_field actor_pyl, actor_pyh
+		ldh a, [temp2]
+		put_hl_and_switch_to_field actor_pyh, actor_pxl
+		ld a, $80
+		put_hl_and_switch_to_field actor_pxl, actor_pxh
+		ldh a, [temp1]
+		ld [hl], a
+	.NoFreeActorSlot:
+	pop hl
+
 	ld a, BlockType_Floor
 	jp BlockChangeForPlayer
+
+RunBlockExit::
+	ld a, [HaveCritterActive]
+	or a
+	ret z
+
+	ld b, ActorType_FollowingCritter
+	call FindFirstActorOfTypeB
+	ret c
+
+	switch_hl_to_field actor_type, actor_state
+	ld a, [hl]
+	or a
+	ret nz ; Already 1
+	ld [hl], 1 ; Change the state to something nonzero to signal it should go to the exit
+	switch_hl_to_field actor_state, actor_var1
+	ld [hl], 0 ; Will use this as a timer
+	ret

@@ -301,6 +301,215 @@ ActorEnemySpawning::
 	ld b, 0
 	jp DrawActor_16x16_Symmetrical
 
+ActorFollowingCritter::
+	assert actor_state == actor_type + 1
+	inc de
+	ld a, [de]
+	dec de
+	; A = the state
+	or a
+	jp nz, .GoToExitState
+
+	; Normal state
+	ld hl, actor_var1
+	add hl, de
+	ldh a, [PlayerPYH]
+	add [hl]
+	ld b, a
+	switch_hl_to_field actor_var1, actor_pyl
+
+	ldh a, [PlayerPYL]
+	sub [hl] ; actor_pyl
+	ld c, a
+	inc l
+
+	ld a, b
+	sbc [hl] ; actor_pyh
+	dec l
+	call .div_32
+
+	add [hl]
+	ld [hl+], a ; actor_pyl
+	ld a, [hl]
+	adc b
+	ld [hl], a ; actor_pyh
+
+	; -----
+
+	switch_hl_to_field actor_pyh, actor_var2
+	ldh a, [PlayerPXH]
+	add [hl]
+	ld b, a
+	switch_hl_to_field actor_var2, actor_pxl
+
+	ldh a, [PlayerPXL]
+	sub [hl] ; actor_pxl
+	ld c, a
+	inc l
+
+	ld a, b
+	sbc [hl] ; actor_pxh
+	dec l
+	call .div_32
+
+	add [hl]
+	ld [hl+], a ; actor_pxl
+	ld a, [hl]
+	adc b
+	ld [hl], a ; actor_pxh
+
+	; -----
+
+	; Move behind player
+	switch_hl_to_field actor_pxh, actor_timer
+	inc [hl]
+	ld a, [hl]
+	and 31
+	jr nz, .NoReposition
+;		call RandomByte
+;		and %1110
+		ld a, [PaintShootDirection]
+		add a
+		ld bc, .wander_table
+		add_bc_a
+
+		ld hl, actor_var1
+		add hl, de
+		ld a, [bc]
+		ld [hl+], a
+		inc bc
+		ld a, [bc]
+		ld [hl], a
+	.NoReposition:
+
+	; Flip to face the player
+	ld hl, actor_pxh
+	add hl, de
+	ldh a, [PlayerPXH]
+	cp [hl]
+	jr z, .NoFlip
+	jr nc, .Left
+	.Right:
+		ld a, [de]
+		or 128
+		ld [de], a
+		jr .NoFlip
+	.Left:
+		ld a, [de]
+		and 127
+		ld [de], a
+	.NoFlip:
+
+.Draw:
+	; Animate
+	ld a, [de]
+	and 128
+	rrca
+	rrca
+	or 5 | OAMF_PAL1
+	ld b, a
+
+	; Hover back and forth
+	ld hl, actor_timer
+	add hl, de
+	ld a, [hl]
+	and 63
+	ld hl, .hover_table
+	add_hl_a
+	ld c, [hl]
+
+	ldh a, [framecount]
+	rrca
+	rrca
+	rrca
+	rrca
+	and 2
+	add TILE_ID_CRITTER
+
+	jp DrawActor_8x16_YOffset
+
+.hover_table:
+	db 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 8, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 4, 3, 3, 2, 2, 1, 1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4
+.div_32:
+	ld b, a
+	ld a, c
+	sra b
+	rra
+	sra b
+	rra
+	sra b
+	rra
+	sra b
+	rra
+	sra b
+	rra
+	ret
+.wander_table:
+	db  0, -1
+	db -1, -1
+	db -2,  0
+	db -1,  1
+	db  0,  1
+	db  1,  1
+	db  2,  0
+	db  1, -1
+.GoToExitState:
+	ld hl, actor_pyl
+	add hl, de
+
+	ld a, $80
+	sub [hl] ; actor_pyl
+	ld c, a
+	inc l
+
+	ld a, [MazeExitY]
+	sbc [hl] ; actor_pyh
+	dec l
+	call .div_32
+
+	add [hl]
+	ld [hl+], a ; actor_pyl
+	ld a, [hl]
+	adc b
+	ld [hl], a ; actor_pyh
+
+	; -----
+
+	switch_hl_to_field actor_pyh, actor_var2
+	ldh a, [PlayerPXH]
+	add [hl]
+	ld b, a
+	switch_hl_to_field actor_var2, actor_pxl
+
+	ld a, $80
+	sub [hl] ; actor_pxl
+	ld c, a
+	inc l
+
+	ld a, [MazeExitX]
+	sbc [hl] ; actor_pxh
+	dec l
+	call .div_32
+
+	add [hl]
+	ld [hl+], a
+	ld a, [hl] ; actor_pxl
+	adc b
+	ld [hl], a ; actor_pxh
+
+	; Increase a timer for a bit and then remove the actor
+	switch_hl_to_field actor_pxh, actor_var1
+	inc [hl]
+	ld a, [hl]
+	cp 70
+	jr c, :+
+		xor a
+		ld [de], a
+		ld [HaveCritterActive], a
+	:
+
+	jp .Draw
+
 ;height = 0
 ;speed = -10
 ;while True:
