@@ -20,31 +20,44 @@ include "include/macros.inc"
 SECTION "Palette", ROM0
 
 UploadGameplayPalette::
-  ldh a, [IsNotGameBoyColor]
-  or a
-  ret nz
+	ldh a, [IsNotGameBoyColor]
+	or a
+	ret nz
 
-  ld a, BCPSF_AUTOINC   ; index zero, auto increment
-  ldh [rBCPS], a        ; background palette index
-  ld hl, BG_Palette
-  ld b, 2*4*8
+	ld a, 0
+	ld [UseBrighterPalettes], a
+
+	ld a, BCPSF_AUTOINC   ; index zero, auto increment
+	ldh [rBCPS], a        ; background palette index
+	ld hl, BG_Palette
+	ld a, [UseBrighterPalettes]
+	or a
+	jr z, :+
+		ld hl, BG_PaletteBright
+	:
+	ld b, 2*4*8
 .loop:
-  ld a, [hl+]
-  ld [rBCPD], a
-  dec b
-  jr nz, .loop
+	ld a, [hl+]
+	ld [rBCPD], a
+	dec b
+	jr nz, .loop
 
 ; Now for sprites
-  ld a, OCPSF_AUTOINC   ; index zero, auto increment
-  ldh [rOCPS], a        ; background palette index
-  ld hl, Sprite_Palette
-  ld b, 2*4*8
+	ld a, OCPSF_AUTOINC   ; index zero, auto increment
+	ldh [rOCPS], a        ; background palette index
+	ld hl, Sprite_Palette
+	ld a, [UseBrighterPalettes]
+	or a
+	jr z, :+
+		ld hl, Sprite_PaletteBright
+	:
+	ld b, 2*4*8
 .loop2:
-  ld a, [hl+]
-  ld [rOCPD], a
-  dec b
-  jr nz, .loop2
-  ret
+	ld a, [hl+]
+	ld [rOCPD], a
+	dec b
+	jr nz, .loop2
+	ret
 
 BG_Palette:
 ; Background palette
@@ -89,6 +102,49 @@ BG_Palette:
   rgb $9c/8,$8b/8,$db/8
   rgb $ce/8,$aa/8,$ed/8
 
+BG_PaletteBright:
+; Background palette
+; 0 terrain
+  rgb $02, $0d, $05
+  rgb $08, $15, $0A 
+  rgb $0D, $19, $10
+  rgb $12, $1B, $16
+; 1 wall
+  rgb $00, $0B, $07
+  rgb $00, $18, $0C
+  rgb $07, $1B, $0F
+  rgb $0D, $1F, $16
+; 2 parallax
+  rgb 27/8, 36/8, 71/8
+  rgb 43/8, 78/8, 149/8
+  rgb 22, 22, 22 ; unused
+  rgb 31, 31, 31 ; unused
+; 3 purple
+  rgb $49/8, $41/8, $82/8
+  rgb $78/8, $64/8, $c6/8
+  rgb $9c/8, $8b/8, $db/8
+  rgb $ce/8, $aa/8, $ed/8
+; 4 blue
+  rgb $2b/8, $4e/8, $95/8
+  rgb $27/8, $89/8, $cd/8
+  rgb $42/8, $bf/8, $e8/8
+  rgb $73/8, $ef/8, $e8/8
+; 5 orange
+  rgb $ac/8, $32/8, $32/8
+  rgb $d9/8, $57/8, $63/8
+  rgb $fc/8, $a5/8, $70/8
+  rgb $ff/8, $e0/8, $b7/8
+; 6
+  rgb  0,  0,  0
+  rgb 13, 13, 13
+  rgb 22, 22, 22
+  rgb 31, 31, 31
+; 7 status line?
+  rgb 0, 0, 0 ;$49/8,$41/8,$82/8
+  rgb $78/8,$64/8,$c6/8
+  rgb $9c/8,$8b/8,$db/8
+  rgb $ce/8,$aa/8,$ed/8
+
 Sprite_Palette:
 ; Sprite palette
 ; 0 cyberspace blue
@@ -98,10 +154,6 @@ Sprite_Palette:
 ;  rgb $00/8, $ae/8, $e8/8
   rgb $42/8+1, $7a/8+1, $e8/8+1
   rgb 31, 31, 31
-; rgb  0,  0,  0
-; rgb  0,  0,  0
-; rgb 31,  0,  0
-; rgb 31, 31, 31
 ; 1 green
   rgb  0,  0,  0
   rgb  0,  0,  0
@@ -122,11 +174,11 @@ Sprite_Palette:
   rgb  0,  0,  0
   rgb  0,  0,  0
   rgb  0,  0,  0
-; 5 
+; 5 pink
   rgb  0,  0,  0
   rgb  0,  0,  0
-  rgb  0,  0,  0
-  rgb  0,  0,  0
+  rgb 31, 15, 15
+  rgb 31, 31, 31
 ; 6 Maffi's eyes and nose
   rgb  0,  0,  0
   rgb 30, 15, 12 ; Pink
@@ -135,6 +187,53 @@ Sprite_Palette:
 ; 7 Maffi
   rgb  0,  0,  0
   rgb  6,  6,  6              ; Black
-;  rgb  15-3, 8-3,  31-3       ; Purple
+;  rgb  15-3, 8-3,  31-3      ; Purple
   rgb  15-4, 8-4,  31-4       ; Purple (try to be more purple on GBC?)
   rgb  24-2, 24-2, $14 ;24-2  ; Light gray
+
+Sprite_PaletteBright:
+; Sprite palette
+; 0 cyberspace blue
+  rgb 0,  0,   0
+  rgb $04, $09, $17
+  rgb $0C, $12, $1F
+  rgb 31, 31, 31
+; rgb  0,  0,  0
+; rgb  0,  0,  0
+; rgb 31,  0,  0
+; rgb 31, 31, 31
+; 1 green
+  rgb  0,  0,  0
+  rgb  0,  0,  0
+  rgb  0, 31,  0
+  rgb 31, 31, 31
+; 2 blue
+  rgb  0,  0,  0
+  rgb  0,  0,  0
+  rgb  0,  0, 31
+  rgb 31, 31, 31
+; 3 red
+  rgb  0,  0,  0
+  rgb  0,  0,  0
+  rgb 31, 15,  0
+  rgb 31, 31, 31
+; 4 
+  rgb  0,  0,  0
+  rgb  0,  0,  0
+  rgb  0,  0,  0
+  rgb  0,  0,  0
+; 5 pink
+  rgb  0,  0,  0
+  rgb  0,  0,  0
+  rgb 31, 15, 15
+  rgb 31, 31, 31
+; 6 Maffi's eyes and nose
+  rgb  0,  0,  0
+  rgb 30, 15, 12 ; Pink
+  rgb 17, 18, 31 ; Blue
+  rgb 31, 31, 31 ; White
+; 7 Maffi
+  rgb  0,  0,  0
+  rgb  6,  6,  6              ; Black
+  rgb  $0F, $09, $1C          ; Purple
+  rgb  $16, $16, $15          ; Light gray
