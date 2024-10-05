@@ -6,6 +6,7 @@ import sys
 
 ACTOR_POINTER_SECTION = 'SECTION FRAGMENT "ActorCode", ROMX, ALIGN[8]'
 ACTOR_DATA_SECTION = 'SECTION FRAGMENT "ActorCode", ROMX'
+ACTOR_ROM0_SECTION = 'SECTION FRAGMENT "ActorGlobal", ROM0'
 
 # ---------------------------
 
@@ -58,7 +59,7 @@ for line in text:
 	if line.startswith("+"): # new actor
 		saveActor()
 		# Reset to prepare for the new actor
-		actor = {"name": line[1:], "run": "ActorNothing", "health": "$10"}
+		actor = {"name": line[1:], "run": "ActorNothing", "health": "$10", "important": False, "unimportant": False}
 		continue
 	word, arg = separateFirstWord(line)
 	# Miscellaneous directives
@@ -66,6 +67,8 @@ for line in text:
 		name, value = separateFirstWord(arg)
 		aliases[name] = value
 	# Attributes
+	elif word in ("important", "unimportant"):
+		actor[word] = True
 	elif word in ["health", "run"]:
 		actor[word] = arg
 
@@ -95,6 +98,12 @@ outfile.write('\n%s\n' % ACTOR_DATA_SECTION)
 outfile.write('\nActorHealth::\n')
 for a in all_actors:
 	outfile.write('db %s\n' % a["health"])
+
+outfile.write('\n%s\n' % ACTOR_ROM0_SECTION)
+
+outfile.write('\nActorFlags::\n')
+for a in all_actors:
+	outfile.write('db %x|%x\n' % (a["unimportant"]*128, a["important"]*64))
 
 outfile.close()
 

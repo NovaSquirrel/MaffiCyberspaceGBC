@@ -254,7 +254,7 @@ ActorHurtStarParticle::
 		ret
 	:
 	ld hl, PaintOffset
-	add_hl_a
+	rst AddHL_A
 	ld c, [hl]
 
 	ld a, TILE_ID_HURT_STAR_PARTICLE
@@ -291,15 +291,30 @@ ActorEnemySpawning::
 		ld [de], a
 		call RandomByte
 		and 3
-		ret nz
+		jr nz, .No
 		ld a, ActorType_Kitty
 		ld [de], a
-		ret
+		.No:
+
+		; Initialize the health
+		ld a, [de]
+		ld hl, ActorHealth
+		rst AddHL_A
+		ld a, [hl]
+		ld hl, actor_health
+		add hl, de
+		ld [hl], a
 	.notReady:
 
 	ld a, TILE_ID_ENEMY_SPAWNING
 	ld b, 0
 	jp DrawActor_16x16_Symmetrical
+
+ActorExitReady::
+	ld a, TILE_ID_ARROW_DOWN
+	ld b, 5 | OAMF_PAL1
+	ld c, 4
+	jp DrawActor_8x16_YOffset
 
 ActorFollowingCritter::
 	assert actor_state == actor_type + 1
@@ -415,7 +430,7 @@ ActorFollowingCritter::
 	ld a, [hl]
 	and 63
 	ld hl, .hover_table
-	add_hl_a
+	rst AddHL_A
 	ld c, [hl]
 
 	ldh a, [framecount]
@@ -428,6 +443,13 @@ ActorFollowingCritter::
 
 	jp DrawActor_8x16_YOffset
 
+;l = []
+;import math
+;for i in range(64):
+;	angle = (i / 64) * 2 * math.pi
+;	r = math.sin(angle) * 5;
+;	l.append(round(r) + 4)
+;print(', '.join([str(x) for x in l]))
 .hover_table:
 	db 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 8, 8, 8, 8, 7, 7, 6, 6, 5, 5, 4, 4, 4, 3, 3, 2, 2, 1, 1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4
 .div_32:
@@ -505,11 +527,28 @@ ActorFollowingCritter::
 	inc [hl]
 	ld a, [hl]
 	cp 90
-	jr c, :+
+	jr c, .DontRemoveYet
 		xor a
 		ld [de], a
 		ld [HaveCritterActive], a
-	:
+
+		ld a, [RescueCritterCount]
+		or a
+		jr nz, .DontRemoveYet
+		ld a, ActorType_ExitReady
+		ld [de], a
+
+		ld hl, actor_pyl
+		add hl, de
+		ld a, $80
+		put_hl_and_switch_to_field actor_pyl, actor_pyh
+		ld a, [MazeExitY]
+		put_hl_and_switch_to_field actor_pyh, actor_pxl
+		ld a, $80
+		put_hl_and_switch_to_field actor_pxl, actor_pxh
+		ld a, [MazeExitX]
+		ld [hl], a
+	.DontRemoveYet:
 
 	jp .Draw
 
@@ -1340,7 +1379,7 @@ DrawEnemy_16x16_AndCollide:
 	or a
 	ret z
 	ld hl, _SCRN1+14
-	add_hl_a
+	rst AddHL_A
 
 	ld a, [PlayerHealth]
 	dec a

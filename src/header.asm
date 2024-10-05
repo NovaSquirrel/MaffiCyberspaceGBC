@@ -58,7 +58,7 @@ SECTION "rst38", ROM0[$0038]
 
 ; $0040 - $0067: Interrupt handlers.
 SECTION "vblank", ROM0[$0040]
-	jp vblank
+	jp VblankIndirectJump
 SECTION "stat", ROM0[$0048]
 	push af
 	ldh a, [LYC_Interrupt_LCDC]
@@ -112,8 +112,12 @@ EntryPoint:
 	xor a
 	ldh [rAUDENA], a
 
-	; Turn the screen off because we're doing setup now
-	call ScreenOff
+	; Turn off the screen but without turning on interrupts
+	ld a, BANK(busy_wait_vblank)
+	ld [rROMB0], a
+	call busy_wait_vblank
+	xor a
+	ldh [rLCDC], a
 
 	ldh a, [IsNotGameBoyColor]
 	or a
@@ -138,6 +142,8 @@ EntryPoint:
 	bit 4, h   ; Detect going from Cx to Dx
 	jr z, :-
 
+	call SetDefaultVblankHandler
+
 	; Set up Super Game Boy, if present
 	ld a, BANK(detect_sgb)
 	ld [rROMB0], a
@@ -153,39 +159,6 @@ EntryPoint:
 	ld de, RunOamDMA
 	ld c, oam_dma_routine_end - oam_dma_routine
 	call memcpy8
-
-	; Load in some graphics
-	ld a, BANK(PlayfieldTileset)
-	ld [rROMB0], a
-
-	ld de, SpriteTileset
-	ld hl, _VRAM8000
-	ld b, 6*16
-	call pb16_unpack_block
-
-	ld de, PlayfieldTileset
-	ld hl, _VRAM9000
-	ld b, 8*16
-	call pb16_unpack_block
-	
-	ld de, StatusTileset
-	ld a, [IsSuperGameBoy]
-	or a
-	jr z, :+
-		ld de, StatusTilesetSGB
-	:
-	ld hl, _VRAM8000 + $F00
-	ld b, 1*16
-	call pb16_unpack_block
-
-	ld de, SpWalkerTileset
-	ld hl, _VRAM8000 + $500
-	ld b, 16
-	call pb16_unpack_block
-	ld de, SpBallTileset
-	ld hl, _VRAM8000 + $600
-	ld b, 16
-	call pb16_unpack_block
 
 	ldh a, [IsNotGameBoyColor]
 	or a
@@ -214,8 +187,30 @@ EntryPoint:
 	ld bc, 1234
 	call SeedRandomLCG
 
+	; TODO: Show a title screen of some sort
+	xor a
+	ld hl, _SCRN0
+	ld bc, 1024
+	ld a, $f0
+	call memset
+	ldh a, [IsNotGameBoyColor]
+	or a
+	jr z, :+
+		ld a, 1
+		ldh [rVBK], a
+		ld hl, _SCRN0
+		ld bc, 1024
+		call memclear
+		xor a
+		ldh [rVBK], a
+	:
+	; Turn on screen
+	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJON|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00
+	ldh [rLCDC],a
+
 	; Start the first level
 	xor a
+	ld [HaveGameplayGraphicsInVRAM], a
 	jp StartLevel
 
 SECTION "stat2", ROM0
@@ -239,28 +234,3 @@ oam_dma_routine:
 	jr  nz,.wait
 	ret
 oam_dma_routine_end:
-
-SECTION "Tileset", ROMX
-
-PlayfieldTileset:
-	incbin "res/tilesets/playfield_tiles.pb16"
-SpriteTileset:
-	incbin "res/tilesets_8x16/sprite_tiles.pb16"
-StatusTileset:
-	incbin "res/tilesets/status_tiles.pb16"
-StatusTilesetSGB:
-	incbin "res/tilesets/status_tiles_sgb.pb16"
-SpWalkerTileset:
-	incbin "res/tilesets_8x16/sp_walker.pb16"
-SpBallTileset:
-	incbin "res/tilesets_8x16/sp_ball.pb16"
-SpBonziTileset:
-	incbin "res/tilesets_8x16/sp_bonzi.pb16"
-SpClippyTileset:
-	incbin "res/tilesets_8x16/sp_clippy.pb16"
-SpGeorgeTileset:
-	incbin "res/tilesets_8x16/sp_george.pb16"
-SpRoverTileset:
-	incbin "res/tilesets_8x16/sp_rover.pb16"
-
-

@@ -68,35 +68,26 @@ RunRescueCritter::
 	inc a
 	ld [HaveCritterActive], a
 
-	call MapPointerHL_To_XY_DE
-	ld a, d
-	ldh [temp1], a
-	ld a, e
-	ldh [temp2], a
-
 	push hl
-	call FindFreeActorSlot
-	jr nc, .NoFreeActorSlot ; TODO: make room
-		call ClearActorHL
-		ld a, ActorType_FollowingCritter
-		ld [hl], a ; HL: actor_type
-
-		switch_hl_to_field actor_type, actor_pyl
-		ld a, $80
-		put_hl_and_switch_to_field actor_pyl, actor_pyh
-		ldh a, [temp2]
-		put_hl_and_switch_to_field actor_pyh, actor_pxl
-		ld a, $80
-		put_hl_and_switch_to_field actor_pxl, actor_pxh
-		ldh a, [temp1]
-		ld [hl], a
-	.NoFreeActorSlot:
+	ld a, ActorType_FollowingCritter
+	call CreateImportantActorAtBlock
 	pop hl
 
 	ld a, BlockType_Floor
 	jp BlockChangeForPlayer
 
 RunBlockExit::
+	; Potentially exit the level
+	ld a, [RescueCritterCount]
+	or a
+	jr nz, :+
+		ld a, [HaveCritterActive]
+		or a
+		ret nz
+		xor a
+		jp StartLevel
+	:
+
 	ld a, [HaveCritterActive]
 	or a
 	ret z

@@ -129,6 +129,8 @@ DEF TILE_ID_PLAYER_FACE_RIGHT EQU 8
 DEF TILE_ID_PLAYER_FACE_DOWN EQU 10
 DEF TILE_ID_PAINTBRUSH_DOWN EQU 14
 DEF TILE_ID_CRITTER EQU 20
+DEF TILE_ID_ARROW_RIGHT EQU 24
+DEF TILE_ID_ARROW_DOWN EQU 26
 
 ; .----------------------------------------------------------------------------
 ; | Game-specific macros

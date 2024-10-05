@@ -70,7 +70,7 @@ LoadLevelLoop:
 	ld e, l
 
 	ld hl, LoadLevelCommands
-	add_hl_a
+	rst AddHL_A
 	ld a, [hl+]
 	ld h, [hl]
 	ld l, a
@@ -525,7 +525,7 @@ LevelCommand_PutAnywhere::
 		dec a
 		add a
 		ld hl, CritterXYList
-		add_hl_a
+		rst AddHL_A
 		ld [hl], d
 		inc hl
 		ld [hl], e

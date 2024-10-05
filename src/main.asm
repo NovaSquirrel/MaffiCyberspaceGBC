@@ -33,20 +33,6 @@ StartMainLoop::
 	call memclear
 
 	; .----------------------------------------------------
-	; | Initialize registers
-	; '----------------------------------------------------
-	ld a, 7
-	ldh [rWX], a ; X position + 7, so 7 is writing 0
-	ld a, 144-8
-	ldh [rWY], a
-	; Do an interrupt at the bottom of the screen
-	ldh [rLYC], a
-	ld a, STATF_LYC
-	ldh [rSTAT], a
-	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJOFF|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00|LCDCF_WINON
-	ldh [LYC_Interrupt_LCDC], a
-
-	; .----------------------------------------------------
 	; | Initialize gameplay variables
 	; '----------------------------------------------------
 	ld a, 255
@@ -89,6 +75,17 @@ StartMainLoop::
 	ld a, OamBuffer>>8
 	call RunOamDMA
 
+	; TODO: Make sure the fade is done at this point
+
+	ld a, [IsSuperGameBoy]
+	or a
+	jr z, :+
+		ld a, BANK(sgb_freeze)
+		ld [rROMB0], a
+		call sgb_freeze
+	:
+
+	call ScreenOff
 	; On Game Boy Color, get rid of the face overlay tiles to make room for the player
 	ldh a, [IsNotGameBoyColor]
 	or a
@@ -98,7 +95,69 @@ StartMainLoop::
 		call memclear8
 	:
 
-	; Set up the initial status bar
+	; .----------------------------------------------------
+	; | Load graphics
+	; '----------------------------------------------------
+
+	ld a, BANK(PlayfieldTileset)
+	ld [rROMB0], a
+
+	; Load shared graphics, if they're not already loaded
+	ld a, [HaveGameplayGraphicsInVRAM]
+	or a
+	jr nz, .AlreadyHaveSharedGraphics
+		inc a
+		ld [HaveGameplayGraphicsInVRAM], a
+
+		; Load in some graphics
+		ld de, SpriteTileset
+		ld hl, _VRAM8000
+		ld b, 6*16
+		call pb16_unpack_block
+
+		ld de, PlayfieldTileset
+		ld hl, _VRAM9000
+		ld b, 8*16
+		call pb16_unpack_block
+		
+		ld de, StatusTileset
+		ld a, [IsSuperGameBoy]
+		or a
+		jr z, :+
+			ld de, StatusTilesetSGB
+		:
+		ld hl, _VRAM8000 + $F00
+		ld b, 1*16
+		call pb16_unpack_block
+	.AlreadyHaveSharedGraphics:
+
+	; Load per-level graphics
+	ld de, SpWalkerTileset
+	ld hl, _VRAM8000 + $500
+	ld b, 16
+	call pb16_unpack_block
+	ld de, SpBallTileset
+	ld hl, _VRAM8000 + $600
+	ld b, 16
+	call pb16_unpack_block
+
+	; .----------------------------------------------------
+	; | Initialize registers
+	; '----------------------------------------------------
+	ld a, 7
+	ldh [rWX], a ; X position + 7, so 7 is writing 0
+	ld a, 144-8
+	ldh [rWY], a
+	; Do an interrupt at the bottom of the screen
+	ldh [rLYC], a
+	ld a, STATF_LYC
+	ldh [rSTAT], a
+	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJOFF|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00|LCDCF_WINON
+	ldh [LYC_Interrupt_LCDC], a
+
+	; .----------------------------------------------------
+	; | Status bar setup
+	; '----------------------------------------------------
 	ld hl, _SCRN1
 	ld a, $f0
 	ld c, 20
@@ -139,6 +198,20 @@ StartMainLoop::
 	call RenderLevelScreen
 
 	call ScreenOn
+
+	; Set the palettes and attribute screen
+	ld a, [IsSuperGameBoy]
+	or a
+	jr z, :+
+		ld a, BANK(sgb_set_palettes_bcde_attr_a)
+		ld [rROMB0], a
+		ld b, 13
+		ld c, 1
+		ld d, 2
+		ld e, 3
+		ld a, %11000001
+		call sgb_set_palettes_bcde_attr_a
+	:
 forever:
 	; .----------------------
 	; | Pre-vblank tasks
@@ -534,7 +607,7 @@ SpawnEnemy:
 	cp BlockType_Floor
 	jr nz, .FailSpawnEnemy
 
-	call FindFreeActorSlot
+	call FindFreeActorSlotNormal
 	ret nc ; Oops there's no room for an enemy anyway
 	call ClearActorHL
 
@@ -549,14 +622,31 @@ SpawnEnemy:
 	inc l
 	ldh a, [temp1]
 	ld [hl], a     ; actor_pyh
-
-	inc h
-	ld a, l
-	and %11110000 ; Move to actor_health
-	ld l, a
-	ld [hl], $10
 	ret
 .FailSpawnEnemy:
 	dec b
 	jr nz, .TrySpawnEnemy
 	ret
+
+SECTION "Tileset", ROMX
+
+PlayfieldTileset:
+	incbin "res/tilesets/playfield_tiles.pb16"
+SpriteTileset:
+	incbin "res/tilesets_8x16/sprite_tiles.pb16"
+StatusTileset:
+	incbin "res/tilesets/status_tiles.pb16"
+StatusTilesetSGB:
+	incbin "res/tilesets/status_tiles_sgb.pb16"
+SpWalkerTileset:
+	incbin "res/tilesets_8x16/sp_walker.pb16"
+SpBallTileset:
+	incbin "res/tilesets_8x16/sp_ball.pb16"
+SpBonziTileset:
+	incbin "res/tilesets_8x16/sp_bonzi.pb16"
+SpClippyTileset:
+	incbin "res/tilesets_8x16/sp_clippy.pb16"
+SpGeorgeTileset:
+	incbin "res/tilesets_8x16/sp_george.pb16"
+SpRoverTileset:
+	incbin "res/tilesets_8x16/sp_rover.pb16"

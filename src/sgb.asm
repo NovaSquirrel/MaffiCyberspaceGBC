@@ -301,7 +301,7 @@ sgb_send_immediate::
 
 ; SGB palette commands ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-sgb_freeze:
+sgb_freeze::
   ; Freeze display while doing transfers
   call busy_wait_vblank
   ld a, SGB_COMMAND_MASK_EN*8+1

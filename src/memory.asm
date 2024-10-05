@@ -109,12 +109,18 @@ DMG_BufferedPlayerDrawDirection::       ds 1 ; Set when the animation frame copy
 
 EnemyCount:: ds 1
 
+HaveGameplayGraphicsInVRAM:: ds 1
+
 MazeExitX:: ds 1
 MazeExitY:: ds 1
 CritterXYList:: ds 7*2 ; Must not have more than 7
 RescueCritterCount:: ds 1
 
 UseBrighterPalettes:: ds 1 ; Use an alternative, brighter palette, for darker screens
+
+BGPaletteMirror:: ds 8*4*2 ; A copy of the current background palette
+BGPaletteTarget:: ds 8*4*2 ; A copy of the desired background palette
+VblankIndirectJump:: ds 3 ; Should be C3, address
 
 SECTION "ParallaxRAM", WRAM0, ALIGN[4]
 ParallaxShifts::

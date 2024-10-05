@@ -23,6 +23,7 @@ SECTION "Level Load", ROM0
 
 ; Takes a level number in register A, and loads/generates the map, and does other setup
 StartLevel::
+	ld sp, StackEnd ; Reset the stack
 	ld [LevelID], a
 
 	; Clear the playfield
@@ -40,21 +41,6 @@ StartLevel::
 	ld hl, TestLevel
 	call LoadLevel
 
-	;---------------------------------------
-	; Set the palettes and attribute screen
-	ld a, [IsSuperGameBoy]
-	or a
-	jr z, :+
-		ld a, BANK(sgb_set_palettes_bcde_attr_a)
-		ld [rROMB0], a
-		ld b, 13
-		ld c, 1
-		ld d, 2
-		ld e, 3
-		ld a, %11000001
-		call sgb_set_palettes_bcde_attr_a
-	:
-
 	jp StartMainLoop
 
 SECTION "Level Data", ROMX
@@ -64,10 +50,13 @@ TestLevel:
 ;	db LC_TYPE, LEVEL_AREA_2
 ;	db LC_RECT, 35,20, 5, 15
 
-	LevelRect 4, 4, 56, 56
+;	LevelRect 12, 12, 56-24, 56-24
+	LevelRect 20, 20, 56-40, 56-40
+;	LevelRect 4, 4, 56, 56
 	LevelAddWalls WALL_93P
-	LevelPutAnywhere 5, BlockType_RescueCritter
-	LevelPutWithinRect 8, 8, 16, 16, 5, BlockType_EnemyPaint
+	LevelPutAnywhere 3, BlockType_RescueCritter
+;	LevelPutWithinRect 8, 8, 16, 16, 5, BlockType_EnemyPaint
+	LevelPutAnywhere 1, BlockType_Exit
 	LevelAddFloors FLOOR_RARE_STARS
 
 	db LC_END

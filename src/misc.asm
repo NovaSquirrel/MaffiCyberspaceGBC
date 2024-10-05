@@ -22,45 +22,58 @@ include "include/hardware.inc/hardware.inc"
 SECTION "miscellaneous", ROM0
 
 ScreenOff::
-  call WaitVblank
-  xor a
-  ldh [rLCDC], a
-  ret
+	call WaitVblank
+	xor a
+	ldh [rLCDC], a
+	ret
 
 ScreenOn::
-  ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJON|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00|LCDCF_WINON
-  ldh [rLCDC],a
-  ret
+	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJON|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00|LCDCF_WINON
+	ldh [rLCDC],a
+	ret
 
-vblank::
-  push af
-  ld a, [framecount]
-  inc a
-  ld [framecount], a
-  pop af
-  reti
+DefaultVblankHandler::
+	push af
+	ld a, [framecount]
+	inc a
+	ld [framecount], a
+	pop af
+	reti
+
+SetDefaultVblankHandler::
+	ld hl, DefaultVblankHandler
+SetVblankHandler::
+	ld a, $D9 ; RETI
+	ld [VblankIndirectJump], a
+	ld a, l
+	ld [VblankIndirectJump+1], a
+	ld a, h
+	ld [VblankIndirectJump+2], a
+	ld a, $C3 ; JP xxxx
+	ld [VblankIndirectJump], a
+	reti
 
 WaitVblank::
-  push hl
-  push af
-  ld a, IEF_VBLANK|IEF_STAT
-  ldh [rIE],a     ; Enable vblank interrupt
-  ei
+	push hl
+	push af
+	ld a, IEF_VBLANK|IEF_STAT
+	ldh [rIE],a     ; Enable vblank interrupt
+	ei
 
-  ld   hl, framecount
-  ld   a, [hl]
+	ld   hl, framecount
+	ld   a, [hl]
 .loop:
-  halt
-  cp   a, [hl]
-  jr   z, .loop
-  pop af
-  pop hl
-  ret
+	halt
+	cp   a, [hl]
+	jr   z, .loop
+	pop af
+	pop hl
+	ret
 
 timer::
 serial::
 joypad::
-  reti
+	reti
 
 memclear::
 	xor a
@@ -551,6 +564,74 @@ FindFreeActorSlot::
 	ret
 .Found:
 	scf ; True
+	ret
+
+FindFreeActorSlotNormal:: ; Can replace an unimportant actor if there's no room
+	call FindFreeActorSlot
+	ret c
+
+	; Is there anything specifically marked as unimportant?
+	ld hl, ActorData
+.FindFree:
+	ld a, [hl]
+	push hl
+	ld hl, ActorFlags
+	rst AddHL_A
+	ld a, [hl]
+	add a
+	pop hl
+	jr c, FindFreeActorSlot.Found
+	ld a, l
+	add ACTOR_SIZE
+	ld l, a
+	jr nz, .FindFree
+	or a ; Fail
+	ret
+
+FindFreeActorSlotImportant:: ; Can replace an unimportant actor or a normal actor if there's no room
+	call FindFreeActorSlotNormal
+	ret c
+
+	; Is there anything that's *not* marked as important, at least?
+	ld hl, ActorData
+.FindFree:
+	ld a, [hl]
+	push hl
+	ld hl, ActorFlags
+	rst AddHL_A
+	ld a, [hl]
+	and 64
+	pop hl
+	jr nz, FindFreeActorSlot.Found
+	ld a, l
+	add ACTOR_SIZE
+	ld l, a
+	jr nz, .FindFree
+
+	; Fine, put it in the first slot and overwrite whatever is there
+	ld hl, ActorData
+	or a ; False
+	ret
+
+; Creates actor A at block HL
+CreateImportantActorAtBlock::
+	ldh [temp1], a
+	call MapPointerHL_To_XY_DE
+	call FindFreeActorSlotImportant
+	jr nc, .NoFreeActorSlot
+		call ClearActorHL
+		ld a, [temp1]
+		ld [hl], a ; HL: actor_type
+
+		switch_hl_to_field actor_type, actor_pyl
+		ld a, $80
+		put_hl_and_switch_to_field actor_pyl, actor_pyh
+		ld a, e
+		put_hl_and_switch_to_field actor_pyh, actor_pxl
+		ld a, $80
+		put_hl_and_switch_to_field actor_pxl, actor_pxh
+		ld [hl], d
+	.NoFreeActorSlot:
 	ret
 
 ClearActorHL::

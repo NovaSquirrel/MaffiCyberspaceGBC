@@ -9,15 +9,24 @@ run ActorKitty
 
 +PaintProjectile
 run ActorPaintProjectile
+unimportant
 
 +HurtStarParticle
 run ActorHurtStarParticle
+unimportant
 
 +Poof
 run ActorPoof
+unimportant
 
 +EnemySpawning
 run ActorEnemySpawning
 
 +FollowingCritter
 run ActorFollowingCritter
+important
+
++ExitReady
+run ActorExitReady
+unimportant
+
