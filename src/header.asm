@@ -29,8 +29,8 @@ AddHL_A::
 	ret
 SECTION "rst10", ROM0[$0010]
 MemcpySmall::
-	ld a, [de]
-	ld [hli], a
+	ld a, [hli]
+	ld [de], a
 	inc de
 	dec c
 	jr nz, MemcpySmall

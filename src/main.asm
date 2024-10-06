@@ -85,6 +85,7 @@ StartMainLoop::
 		call sgb_freeze
 	:
 
+	call FadeToWhite
 	call ScreenOff
 	; On Game Boy Color, get rid of the face overlay tiles to make room for the player
 	ldh a, [IsNotGameBoyColor]
@@ -198,6 +199,11 @@ StartMainLoop::
 	call RenderLevelScreen
 
 	call ScreenOn
+	ld a, [CameraXPixel]
+	ldh [rSCX], a
+	ld a, [CameraYPixel]
+	ldh [rSCY], a
+	call FadeFromWhite
 
 	; Set the palettes and attribute screen
 	ld a, [IsSuperGameBoy]

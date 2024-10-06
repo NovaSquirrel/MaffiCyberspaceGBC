@@ -118,8 +118,6 @@ RescueCritterCount:: ds 1
 
 UseBrighterPalettes:: ds 1 ; Use an alternative, brighter palette, for darker screens
 
-BGPaletteMirror:: ds 8*4*2 ; A copy of the current background palette
-BGPaletteTarget:: ds 8*4*2 ; A copy of the desired background palette
 VblankIndirectJump:: ds 3 ; Should be C3, address
 
 SECTION "ParallaxRAM", WRAM0, ALIGN[4]
@@ -170,3 +168,17 @@ SECTION "Maze data", WRAMX, BANK[1]
 Playfield::
 	ds 4096
 PlayfieldEnd::
+
+SECTION "GBC data", WRAMX, BANK[2], ALIGN[8]
+BG_Palette_RGB888_Current::  ds 8*4*3
+OBJ_Palette_RGB888_Current:: ds 8*3*3
+	ds (256 - 8*4*3 - 8*3*3)
+BG_Palette_RGB888_Delta::    ds 8*4*3
+OBJ_Palette_RGB888_Delta::   ds 8*3*3
+	ds (256 - 8*4*3 - 8*3*3)
+BG_Palette_RGB888_Target::  ds 8*4*3
+OBJ_Palette_RGB888_Target:: ds 8*3*3
+	ds (256 - 8*4*3 - 8*3*3)
+BG_Palette_RGB555::          ds 8*4*2
+OBJ_Palette_RGB555::         ds 8*3*2
+	ds (256 - 8*4*2 - 8*3*2)

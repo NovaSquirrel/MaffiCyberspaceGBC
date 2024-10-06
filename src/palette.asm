@@ -19,6 +19,190 @@ include "include/macros.inc"
 
 SECTION "Palette", ROM0
 
+
+FadeToWhite::
+	ld a, BANK(BG_Palette_RGB888_Current)
+	ld [rSMBK], a
+
+	ld hl, BG_Palette_8
+	ld de, BG_Palette_RGB888_Current
+	ld c, 8*4*3
+	rst MemcpySmall
+
+	ld hl, BG_Palette_RGB888_Current
+	ld c, 8*4*3
+:	ld a, 31*8
+	sub [hl] ; Current
+	srl a
+	srl a
+	srl a
+	inc h
+	ld [hl+], a ; Delta
+	dec h
+	dec b
+	jr nz, :-
+
+	call Do8StepColorFade
+
+	ld a, BANK(Playfield)
+	ld [rSMBK], a
+	ret
+
+FadeFromWhite::
+	ld a, BANK(BG_Palette_RGB888_Current)
+	ld [rSMBK], a
+
+	ld hl, BG_Palette_8
+	ld de, BG_Palette_RGB888_Target
+	ld c, 8*4*3
+	rst MemcpySmall
+
+	ld hl, BG_Palette_RGB888_Target
+	ld c, 8*4*3
+:	ld a, 31*8
+	sub [hl] ; Target
+	srl a
+	srl a
+	srl a
+	cpl
+	inc a ; Negate
+	dec h
+	ld [hl+], a ; Delta
+	inc h
+	dec b
+	jr nz, :-
+
+	call Do8StepColorFade
+
+	ld a, BANK(Playfield)
+	ld [rSMBK], a
+	ret
+
+Do8StepColorFade:
+	ld a, 8
+	ldh [temp1], a
+.FadeLoop:
+	ld hl, BG_Palette_RGB888_Current
+	ld de, BG_Palette_RGB555
+	ld b, 8*4 + 8*3
+.FadeOneColor:
+	push bc
+	; Add delta
+	; Blue
+	ld a, [hl]
+	inc h
+	add [hl]
+	dec h
+	ld [hl+], a
+	and %11111000
+	rra
+	rra
+	rra
+	ld b, a ; ...bbbbb ........
+
+	; Green
+	ld a, [hl]
+	inc h
+	add [hl]
+	dec h
+	ld [hl+], a
+	and %11111000
+	add a
+	rl b
+	add a
+	rl b
+	ld c, a ; .bbbbbgg ggg.....
+
+	; Red
+	ld a, [hl]
+	inc h
+	add [hl]
+	dec h
+	ld [hl+], a
+	and %11111000
+	rra
+	rra
+	rra
+	or c ; .bbbbbgg gggrrrrr
+	ld [de], a
+	inc e
+	ld a, b
+	ld [de], a
+	inc e
+	pop bc
+	dec b
+	jr nz, .FadeOneColor
+
+	call WaitVblank
+
+	ld a, BCPSF_AUTOINC   ; index zero, auto increment
+	ldh [rBCPS], a        ; background palette index
+	ld hl, BG_Palette_RGB555
+	ld c, LOW(rBCPD)
+	ld b, (8*4*2)/8
+:
+	rept 8
+	ld a, [hl+]
+	ld [$ff00+c],a
+	endr
+	dec b
+	jr nz, :-
+
+	; -----------------
+	ldh a, [temp1]
+	dec a
+	ldh [temp1], a
+	jr nz, .FadeLoop
+	ret
+
+MACRO rgbf
+	db (\3)*8, (\2)*8, (\1)*8
+ENDM
+
+BG_Palette_8:
+; Background palette
+; 0 terrain
+  rgbf 39/8-3, 65/8-3,  45/8-3
+  rgbf 61/8-3, 111/8-3, 67/8-3
+  rgbf 66/8-3, 164/8-3, 89/8-3
+  rgbf 89/8-3, 207/8-3, 147/8-3
+; 1 wall
+  rgbf 58/8-3,  81/8-3,  73/8-3
+  rgbf 93/8-3,  155/8-3, 121/8-3
+  rgbf 134/8-3, 198/8-3, 154/8-3
+  rgbf 181/8-3, 231/8-3, 203/8-3
+; 2 parallax
+  rgbf 27/8, 36/8, 71/8
+  rgbf 43/8, 78/8, 149/8
+  rgbf 22, 22, 22 ; unused
+  rgbf 31, 31, 31 ; unused
+; 3 purple
+  rgbf $49/8, $41/8, $82/8
+  rgbf $78/8, $64/8, $c6/8
+  rgbf $9c/8, $8b/8, $db/8
+  rgbf $ce/8, $aa/8, $ed/8
+; 4 blue
+  rgbf $2b/8, $4e/8, $95/8
+  rgbf $27/8, $89/8, $cd/8
+  rgbf $42/8, $bf/8, $e8/8
+  rgbf $73/8, $ef/8, $e8/8
+; 5 orange
+  rgbf $ac/8, $32/8, $32/8
+  rgbf $d9/8, $57/8, $63/8
+  rgbf $fc/8, $a5/8, $70/8
+  rgbf $ff/8, $e0/8, $b7/8
+; 6
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
+; 7 status line?
+  rgbf 0, 0, 0 ;$49/8,$41/8,$82/8
+  rgbf $78/8,$64/8,$c6/8
+  rgbf $9c/8,$8b/8,$db/8
+  rgbf $ce/8,$aa/8,$ed/8
+
+
 UploadGameplayPalette::
 	ldh a, [IsNotGameBoyColor]
 	or a

@@ -489,10 +489,10 @@ sgb_load_border::
     inc b
     jr nz, .tilemaploop
 
-  pop de
+  pop hl
   ; And last: the palette
   ld c, 32
-  ld hl, _VRAM8800
+  ld de, _VRAM8800
   rst MemcpySmall
   ld b, 0
 
