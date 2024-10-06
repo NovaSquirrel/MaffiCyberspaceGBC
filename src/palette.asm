@@ -19,8 +19,11 @@ include "include/macros.inc"
 
 SECTION "Palette", ROM0
 
-
 FadeToWhite::
+	ldh a, [IsNotGameBoyColor]
+	or a
+	ret nz
+
 	ld a, BANK(BG_Palette_RGB888_Current)
 	ld [rSMBK], a
 
@@ -49,6 +52,10 @@ FadeToWhite::
 	ret
 
 FadeFromWhite::
+	ldh a, [IsNotGameBoyColor]
+	or a
+	ret nz
+
 	ld a, BANK(BG_Palette_RGB888_Current)
 	ld [rSMBK], a
 

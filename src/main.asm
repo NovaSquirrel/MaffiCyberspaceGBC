@@ -61,11 +61,6 @@ StartMainLoop::
 	dec a
 	ld [PlayerAnimationFrameInVRAM], a ; Initialize it with -1 so it'll get sent no matter what
 
-	ld a, LOW(ParallaxShifts)
-	ld [ParallaxSource+0], a
-	ld a, HIGH(ParallaxShifts)
-	ld [ParallaxSource+1], a
-
 	; .----------------------------------------------------
 	; | Clear OAM
 	; '----------------------------------------------------
@@ -74,8 +69,6 @@ StartMainLoop::
 	call memclear8
 	ld a, OamBuffer>>8
 	call RunOamDMA
-
-	; TODO: Make sure the fade is done at this point
 
 	ld a, [IsSuperGameBoy]
 	or a
@@ -194,6 +187,16 @@ StartMainLoop::
 
 	; Set initial camera view, and render all the tiles that should be visible
 	call InitCamera
+
+	; Parallax upload
+	ld hl, ParallaxSource
+	ld a, [hl+]
+	ld h, [hl]
+	ld l, a
+	ld de, $9000
+	ld b, 2
+	call WriteOneTile
+
 	ld a, BANK(RenderLevelScreen)
 	ld [rROMB0], a
 	call RenderLevelScreen
@@ -292,7 +295,6 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	ld l, a
 	ld de, $9000
 	ld b, 2
-:	; Semi-unrolled loop
 	call WriteOneTile
 
 	ld a, BANK(UpdateRow)
