@@ -155,7 +155,7 @@ StartMainLoop::
 	ld hl, _SCRN1
 	ld a, $f0
 	ld c, 20
-	call memset8
+	rst MemsetSmall
 	ld hl, _SCRN1+2 ; Critters left
 	ld a, $f6
 	ld [hl+], a
@@ -165,11 +165,11 @@ StartMainLoop::
 	ld hl, _SCRN1+6 ; Paint bar
 	ld a, $f5
 	ld c, 8
-	call memset8
+	rst MemsetSmall
 	inc l
 	ld a, $f8       ; Hearts
 	ld c, 4
-	call memset8
+	rst MemsetSmall
 
 	; On Game Boy Color, set the palette of the status bar
 	ldh a, [IsNotGameBoyColor]

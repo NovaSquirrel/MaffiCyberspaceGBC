@@ -25,7 +25,7 @@ FadeToWhite::
 	ret nz
 
 	ld a, BANK(BG_Palette_RGB888_Current)
-	ld [rSMBK], a
+	ldh [rSMBK], a
 
 	ld hl, BG_Palette_8
 	ld de, BG_Palette_RGB888_Current
@@ -48,7 +48,7 @@ FadeToWhite::
 	call Do8StepColorFade
 
 	ld a, BANK(Playfield)
-	ld [rSMBK], a
+	ldh [rSMBK], a
 	ret
 
 FadeFromWhite::
@@ -57,7 +57,7 @@ FadeFromWhite::
 	ret nz
 
 	ld a, BANK(BG_Palette_RGB888_Current)
-	ld [rSMBK], a
+	ldh [rSMBK], a
 
 	ld hl, BG_Palette_8
 	ld de, BG_Palette_RGB888_Target
@@ -82,7 +82,7 @@ FadeFromWhite::
 	call Do8StepColorFade
 
 	ld a, BANK(Playfield)
-	ld [rSMBK], a
+	ldh [rSMBK], a
 	ret
 
 Do8StepColorFade:
@@ -140,6 +140,7 @@ Do8StepColorFade:
 	dec b
 	jr nz, .FadeOneColor
 
+	call WaitVblank
 	call WaitVblank
 
 	ld a, BCPSF_AUTOINC   ; index zero, auto increment
@@ -229,7 +230,7 @@ UploadGameplayPalette::
 	ld b, 2*4*8
 .loop:
 	ld a, [hl+]
-	ld [rBCPD], a
+	ldh [rBCPD], a
 	dec b
 	jr nz, .loop
 
@@ -245,7 +246,7 @@ UploadGameplayPalette::
 	ld b, 2*4*8
 .loop2:
 	ld a, [hl+]
-	ld [rOCPD], a
+	ldh [rOCPD], a
 	dec b
 	jr nz, .loop2
 	ret

@@ -87,58 +87,8 @@ ActorSneaker::
 	call EnemyCommon
 	jr nc, .DrawOnly
 
-	ldh a, [PlayerPYH]
-	ld hl, actor_pyh
-	add hl, de
-	cp [hl]
-	jr z, .EqualY
-	jr nc, .GoDown
-	jr .GoUp
-	.EqualY:
-		ldh a, [PlayerPYL]
-		dec l
-		cp [hl]
-		jr z, .DoneMoveY
-		jr nc, .GoDown
-	.GoUp:
-		ld a, -$08
-		call ActorWalkYAndBump
-		jr .DoneMoveY
-	.GoDown:
-		ld a, $08
-		call ActorWalkYAndBump
-	.DoneMoveY:
-
-	ldh a, [PlayerPXH]
-	ld hl, actor_pxh
-	add hl, de
-	cp [hl]
-	jr z, .EqualX
-	jr nc, .GoRight
-	jr .GoLeft
-	.EqualX:
-		ldh a, [PlayerPXL]
-		dec l
-		cp [hl]
-		jr z, .DoneMoveX
-		jr nc, .GoRightNoFlip
-		jr .GoLeftNoFlip
-	.GoLeft:
-		ld a, [de]
-		or 128
-		ld [de], a
-	.GoLeftNoFlip:
-		ld a, -$08
-		call ActorWalkXAndBump
-		jr .DoneMoveX
-	.GoRight:
-		ld a, [de]
-		and 127
-		ld [de], a 
-	.GoRightNoFlip:
-		ld a, $08
-		call ActorWalkXAndBump
-	.DoneMoveX:
+	ld a, $08
+	call ActorWalkTowardPlayerAndBump
 
 .DrawOnly:
 	ldh a, [framecount]
@@ -148,8 +98,117 @@ ActorSneaker::
 	ld b, 0
 	jp DrawEnemy_16x16_AndCollide
 
+
 ActorKitty::
 	call EnemyCommon
+	jp nc, .DrawOnly
+
+	ld hl, actor_timer
+	add hl, de
+	ld a, [hl]
+	inc [hl]
+	and 31
+	jr nz, .noChangeDirection
+		ld hl, actor_pxh
+		add hl, de
+		ldh a, [PlayerPXH]
+		sub [hl]
+		jr nc, :+
+			cpl
+			inc a
+		:
+		cp 6
+		jr nc, .TooFarToChase
+
+		switch_hl_to_field actor_pxh, actor_pyh
+		ldh a, [PlayerPYH]
+		sub [hl]
+		jr nc, :+
+			cpl
+			inc a
+		:
+		cp 6
+		jr nc, .TooFarToChase
+			call RandomByte
+			and 7
+			cp 2
+			jr c, .TooFarToChase ; Do a random direction sometimes anyway
+
+			call ActorGetAngleTowardPlayer
+			ld b, a
+			call RandomByte
+			and 7
+			sub 4
+			add b
+			rrca
+			rrca
+			and 63
+
+			ld hl, .kittyCosine
+			add_hl_a
+			ld b, [hl]
+			ld a, 64
+			add_hl_a
+			ld c, [hl]
+	
+			ld hl, actor_vxl
+			add hl, de
+			ld [hl], b
+			switch_hl_to_field actor_vxl, actor_vyl
+			ld [hl], c
+			jr .noChangeDirection
+		.TooFarToChase:
+
+		call RandomByte
+		and 15
+		call MaybeNegative
+		ld hl, actor_vxl
+		add hl, de
+		ld [hl], a
+
+		call RandomByte
+		and 15
+		call MaybeNegative
+		ld hl, actor_vyl
+		add hl, de
+		ld [hl], a
+	.noChangeDirection:
+
+	ld hl, actor_vxl
+	add hl, de
+	ld a, [hl]
+	ld c, a ; Save
+	and 128
+	ld b, a
+	ld a, [de]
+	and 127
+	or b
+	ld [de], a
+	ld a, c ; Restore
+	push hl
+	call ActorWalkXAndBump
+	pop hl
+	jr nc, :+
+		ld a, [hl]
+		cpl
+		inc a
+		ld [hl], a
+	:
+
+	ld hl, actor_vyl
+	add hl, de
+	ld a, [hl]
+	push hl
+	call ActorWalkYAndBump
+	pop hl
+	jr nc, :+
+		ld a, [hl]
+		cpl
+		inc a
+		ld [hl], a		
+	:
+
+.DrawOnly:
 	ldh a, [framecount]
 	rrca
 	rrca
@@ -157,6 +216,24 @@ ActorKitty::
 	add a, $58
 	ld b, 0
 	jp DrawEnemy_16x16_AndCollide
+
+;import math
+;x = []
+;y = []
+;for i in range(64):
+;	angle = (i / 64) * 2 * math.pi
+;	x.append(round(math.cos(angle) * 14))
+;	y.append(round(math.sin(angle) * 14))
+;print(', '.join([str(x) for x in x]))
+;print(', '.join([str(x) for x in y]))
+
+.kittyCosine:
+;	db 12, 12, 12, 11, 11, 11, 10, 9, 8, 8, 7, 6, 5, 3, 2, 1, 0, -1, -2, -3, -5, -6, -7, -8, -8, -9, -10, -11, -11, -11, -12, -12, -12, -12, -12, -11, -11, -11, -10, -9, -8, -8, -7, -6, -5, -3, -2, -1, 0, 1, 2, 3, 5, 6, 7, 8, 8, 9, 10, 11, 11, 11, 12, 12
+	db 14, 14, 14, 13, 13, 12, 12, 11, 10, 9, 8, 7, 5, 4, 3, 1, 0, -1, -3, -4, -5, -7, -8, -9, -10, -11, -12, -12, -13, -13, -14, -14, -14, -14, -14, -13, -13, -12, -12, -11, -10, -9, -8, -7, -5, -4, -3, -1, 0, 1, 3, 4, 5, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14
+.kittySine:
+;	db 0, 1, 2, 3, 5, 6, 7, 8, 8, 9, 10, 11, 11, 11, 12, 12, 12, 12, 12, 11, 11, 11, 10, 9, 8, 8, 7, 6, 5, 3, 2, 1, 0, -1, -2, -3, -5, -6, -7, -8, -8, -9, -10, -11, -11, -11, -12, -12, -12, -12, -12, -11, -11, -11, -10, -9, -8, -8, -7, -6, -5, -3, -2, -1
+	db 0, 1, 3, 4, 5, 7, 8, 9, 10, 11, 12, 12, 13, 13, 14, 14, 14, 14, 14, 13, 13, 12, 12, 11, 10, 9, 8, 7, 5, 4, 3, 1, 0, -1, -3, -4, -5, -7, -8, -9, -10, -11, -12, -12, -13, -13, -14, -14, -14, -14, -14, -13, -13, -12, -12, -11, -10, -9, -8, -7, -5, -4, -3, -1
+
 
 ActorPaintProjectile::
 	ld hl, actor_vxl
@@ -574,12 +651,11 @@ EnemyCommon:
 	ld b, a
 	ld a, [hl-]
 	sub b
-	add a ; Check the sign bit
 	jr nc, :+
 		cpl
 		inc a
 	:
-	cp 24 ; 12, but doubled due to the "add a" sign check
+	cp 12
 	jr c, :+
 	.TooFar:
 		xor a
@@ -592,12 +668,11 @@ EnemyCommon:
 	ld b, a
 	ld a, [hl]
 	sub b
-	add a ; Check the sign bit
 	jr nc, :+
 		cpl
 		inc a
 	:
-	cp 24 ; 12, but doubled due to the "add a" sign check
+	cp 12
 	jr nc, .TooFar
 
 	; ----
@@ -786,23 +861,21 @@ CollideWithDiagonalWave2: ;\
 	ld hl, actor_pxh
 	add hl, de
 	sub [hl]
-	add a ; Check sign
 	jr nc, :+
 		cpl
 		inc a
 	:
-	cp 6 ; Actually 3, doubled because of the "add a"
+	cp 3
 	ret nc
 	; ---
 	switch_hl_to_field actor_pxh, actor_pyh
 	ld a, [PlayerProjectiles_pyh]
 	sub [hl]
-	add a ; Check sign
 	jr nc, :+
 		cpl
 		inc a
 	:
-	cp 6 ; Actually 3, doubled because of the "add a"
+	cp 3
 	ret nc
 	; ---------------------------------
 
@@ -881,23 +954,21 @@ CollideWithDiagonalWave1: ;/
 	ld hl, actor_pxh
 	add hl, de
 	sub [hl]
-	add a ; Check sign
 	jr nc, :+
 		cpl
 		inc a
 	:
-	cp 6 ; Actually 3, doubled because of the "add a"
+	cp 3
 	ret nc
 	; ---
 	switch_hl_to_field actor_pxh, actor_pyh
 	ld a, [PlayerProjectiles_pyh]
 	sub [hl]
-	add a ; Check sign
 	jr nc, :+
 		cpl
 		inc a
 	:
-	cp 6 ; Actually 3, doubled because of the "add a"
+	cp 3
 	ret nc
 	; ---------------------------------
 
@@ -1139,6 +1210,123 @@ ActorWalkXAndBump:
 	ld [hl], a
 	or a
 	ret
+
+; Input: A (Walk speed)
+; Output: B (Bit field for wall bump directions; %YX)
+ActorWalkTowardPlayerAndBump::
+	ldh [temp1], a
+	ld b, 0
+
+	ldh a, [PlayerPYH]
+	ld hl, actor_pyh
+	add hl, de
+	cp [hl]
+	jr z, .EqualY
+	jr nc, .GoDown
+	jr .GoUp
+	.EqualY:
+		ldh a, [PlayerPYL]
+		dec l
+		cp [hl]
+		jr z, .DoneMoveY
+		jr nc, .GoDown
+	.GoUp:
+		ldh a, [temp1]
+		cpl
+		inc a
+		call ActorWalkYAndBump
+		jr .DoneMoveY
+	.GoDown:
+		ldh a, [temp1]
+		call ActorWalkYAndBump
+	.DoneMoveY:
+	rl b
+
+	ldh a, [PlayerPXH]
+	ld hl, actor_pxh
+	add hl, de
+	cp [hl]
+	jr z, .EqualX
+	jr nc, .GoRight
+	jr .GoLeft
+	.EqualX:
+		ldh a, [PlayerPXL]
+		dec l
+		cp [hl]
+		jr z, .DoneMoveX
+		jr nc, .GoRightNoFlip
+		jr .GoLeftNoFlip
+	.GoLeft:
+		ld a, [de]
+		or 128
+		ld [de], a
+	.GoLeftNoFlip:
+		ldh a, [temp1]
+		cpl
+		inc a
+		call ActorWalkXAndBump
+		jr .DoneMoveX
+	.GoRight:
+		ld a, [de]
+		and 127
+		ld [de], a 
+	.GoRightNoFlip:
+		ldh a, [temp1]
+		call ActorWalkXAndBump
+	.DoneMoveX:
+	rl b
+	ret
+
+
+MaybeNegative:
+	push af
+	call RandomByte
+	rra
+	jr c, :+
+	pop af
+	cpl
+	inc a
+	ret
+:	pop af
+	ret
+
+ActorGetAngleTowardPlayer:
+	ld hl, actor_pyl
+	add hl, de
+	ldh a, [PlayerPYL]
+	sub [hl]
+	ld c, a
+	switch_hl_to_field actor_pyl, actor_pyh
+	ldh a, [PlayerPYH]
+	sbc [hl]
+	ld b, a
+	ld a, c
+	rept 4
+	sra b
+	rra
+	endr
+	; D just holds HIGH(ActorData) so it's ok to overwrite it temporarily
+	ld d, a
+
+	switch_hl_to_field actor_pyh, actor_pxl
+	ldh a, [PlayerPXL]
+	sub [hl]
+	ld c, a
+	switch_hl_to_field actor_pxl, actor_pxh
+	ldh a, [PlayerPXH]
+	sbc [hl]
+	ld b, a
+	ld a, c
+	rept 4
+	sra b
+	rra
+	endr
+	ld b, a ; X
+	ld c, d ; Y
+	ld d, HIGH(ActorData)
+
+	jp atan2_bc_xy
+
 
 ; ---------------------------------------------------------
 
