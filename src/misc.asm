@@ -726,7 +726,7 @@ HurtPlayer::
 		jr nz, :+
 			inc a
 			ld [DieAnimationActive], a
-			ld a, -$40
+			ld a, -$4C
 			ld [DieAnimationVYL], a
 
 			call RandomByte

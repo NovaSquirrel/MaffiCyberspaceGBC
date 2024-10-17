@@ -64,12 +64,6 @@ StartMainLoop::
 	; .----------------------------------------------------
 	; | Clear OAM
 	; '----------------------------------------------------
-	ld hl, OamBuffer
-	ld c, 0
-	call memclear8
-	ld a, OamBuffer>>8
-	call RunOamDMA
-
 	ld a, [IsSuperGameBoy]
 	or a
 	jr z, :+
@@ -79,6 +73,14 @@ StartMainLoop::
 	:
 
 	call FadeToScreenOff
+
+	xor a
+	ldh [rIE], a     ; Disable interrupts just in case
+	ld hl, OamBuffer
+	ld c, 0
+	call memclear8
+	ld a, OamBuffer>>8
+	call RunOamDMA
 
 	; On Game Boy Color, get rid of the face overlay tiles to make room for the player
 	ldh a, [IsNotGameBoyColor]
