@@ -1,5 +1,5 @@
 ; Maffi cyberspace game
-; Copyright (C) 2022 NovaSquirrel
+; Copyright (C) 2022-2024 NovaSquirrel
 ;
 ; This program is free software: you can redistribute it and/or
 ; modify it under the terms of the GNU General Public License as
@@ -17,22 +17,37 @@
 include "include/hardware.inc/hardware.inc"
 include "include/macros.inc"
 
-SECTION "Palette", ROM0
+; .----------------------------------------------
+; | Color fade routines
+; '----------------------------------------------
+SECTION "Palette code", ROM0
+
+FadeToScreenOff::
+	ldh a,[rLCDC]
+	add a
+	ret nc
+
+	call FadeToWhite
+
+	; Be sure the Game Boy is in vblank before actually turning the screen off
+:	ldh a, [rLY]
+	cp 144
+	jr c, :-
+
+	xor a
+	ldh [rLCDC], a
+	ret
 
 FadeToWhite::
 	ldh a, [IsNotGameBoyColor]
 	or a
 	ret nz
 
-	ld a, BANK(BG_Palette_RGB888_Current)
+	ld a, BANK(BG_Palette_24bit_Current)
 	ldh [rSMBK], a
 
-	ld hl, BG_Palette_8
-	ld de, BG_Palette_RGB888_Current
-	ld c, 8*4*3
-	rst MemcpySmall
-
-	ld hl, BG_Palette_RGB888_Current
+	; Calculate BG_Palette_RGB888_Delta
+	ld hl, BG_Palette_24bit_Current
 	ld c, 8*4*3
 :	ld a, 31*8
 	sub [hl] ; Current
@@ -51,20 +66,22 @@ FadeToWhite::
 	ldh [rSMBK], a
 	ret
 
-FadeFromWhite::
+; HL = Pointer to a 24-bit color palette
+FadeFromWhiteToPalette::
 	ldh a, [IsNotGameBoyColor]
 	or a
 	ret nz
 
-	ld a, BANK(BG_Palette_RGB888_Current)
+	ld a, BANK(BG_Palette_24bit_Current)
 	ldh [rSMBK], a
 
-	ld hl, BG_Palette_8
-	ld de, BG_Palette_RGB888_Target
+	; HL = Source, passed into this routine
+	ld de, BG_Palette_24bit_Target
 	ld c, 8*4*3
 	rst MemcpySmall
 
-	ld hl, BG_Palette_RGB888_Target
+	; Calculate BG_Palette_RGB888_Delta
+	ld hl, BG_Palette_24bit_Target
 	ld c, 8*4*3
 :	ld a, 31*8
 	sub [hl] ; Target
@@ -83,14 +100,18 @@ FadeFromWhite::
 
 	ld a, BANK(Playfield)
 	ldh [rSMBK], a
+
 	ret
 
+; -----------------------------------------------
+
+; Shared routine to gradually fade from the current palette to the destination palette
 Do8StepColorFade:
 	ld a, 8
 	ldh [temp1], a
 .FadeLoop:
-	ld hl, BG_Palette_RGB888_Current
-	ld de, BG_Palette_RGB555
+	ld hl, BG_Palette_24bit_Current
+	ld de, BG_Palette_15bit
 	ld b, 8*4 + 8*3
 .FadeOneColor:
 	push bc
@@ -145,7 +166,7 @@ Do8StepColorFade:
 
 	ld a, BCPSF_AUTOINC   ; index zero, auto increment
 	ldh [rBCPS], a        ; background palette index
-	ld hl, BG_Palette_RGB555
+	ld hl, BG_Palette_15bit
 	ld c, LOW(rBCPD)
 	ld b, (8*4*2)/8
 :
@@ -163,11 +184,16 @@ Do8StepColorFade:
 	jr nz, .FadeLoop
 	ret
 
+; .----------------------------------------------
+; | The actual palettes
+; '----------------------------------------------
+SECTION "Palette data", ROMX
+
 MACRO rgbf
 	db (\3)*8, (\2)*8, (\1)*8
 ENDM
 
-BG_Palette_8:
+BG_Gameplay_Palette_24bit::
 ; Background palette
 ; 0 terrain
   rgbf 39/8-3, 65/8-3,  45/8-3
@@ -210,134 +236,50 @@ BG_Palette_8:
   rgbf $9c/8,$8b/8,$db/8
   rgbf $ce/8,$aa/8,$ed/8
 
-
-UploadGameplayPalette::
-	ldh a, [IsNotGameBoyColor]
-	or a
-	ret nz
-
-	ld a, 0
-	ld [UseBrighterPalettes], a
-
-	ld a, BCPSF_AUTOINC   ; index zero, auto increment
-	ldh [rBCPS], a        ; background palette index
-	ld hl, BG_Palette
-	ld a, [UseBrighterPalettes]
-	or a
-	jr z, :+
-		ld hl, BG_PaletteBright
-	:
-	ld b, 2*4*8
-.loop:
-	ld a, [hl+]
-	ldh [rBCPD], a
-	dec b
-	jr nz, .loop
-
-; Now for sprites
-	ld a, OCPSF_AUTOINC   ; index zero, auto increment
-	ldh [rOCPS], a        ; background palette index
-	ld hl, Sprite_Palette
-	ld a, [UseBrighterPalettes]
-	or a
-	jr z, :+
-		ld hl, Sprite_PaletteBright
-	:
-	ld b, 2*4*8
-.loop2:
-	ld a, [hl+]
-	ldh [rOCPD], a
-	dec b
-	jr nz, .loop2
-	ret
-
-BG_Palette:
+BG_Gameplay_Palette_24bit_Bright:
 ; Background palette
 ; 0 terrain
-  rgb 39/8-3, 65/8-3,  45/8-3
-  rgb 61/8-3, 111/8-3, 67/8-3
-  rgb 66/8-3, 164/8-3, 89/8-3
-  rgb 89/8-3, 207/8-3, 147/8-3
+  rgbf $02, $0d, $05
+  rgbf $08, $15, $0A 
+  rgbf $0D, $19, $10
+  rgbf $12, $1B, $16
 ; 1 wall
-  rgb 58/8-3,  81/8-3,  73/8-3
-  rgb 93/8-3,  155/8-3, 121/8-3
-  rgb 134/8-3, 198/8-3, 154/8-3
-  rgb 181/8-3, 231/8-3, 203/8-3
+  rgbf $00, $0B, $07
+  rgbf $00, $18, $0C
+  rgbf $07, $1B, $0F
+  rgbf $0D, $1F, $16
 ; 2 parallax
-  rgb 27/8, 36/8, 71/8
-  rgb 43/8, 78/8, 149/8
-  rgb 22, 22, 22 ; unused
-  rgb 31, 31, 31 ; unused
+  rgbf 27/8, 36/8, 71/8
+  rgbf 43/8, 78/8, 149/8
+  rgbf 22, 22, 22 ; unused
+  rgbf 31, 31, 31 ; unused
 ; 3 purple
-  rgb $49/8, $41/8, $82/8
-  rgb $78/8, $64/8, $c6/8
-  rgb $9c/8, $8b/8, $db/8
-  rgb $ce/8, $aa/8, $ed/8
+  rgbf $49/8, $41/8, $82/8
+  rgbf $78/8, $64/8, $c6/8
+  rgbf $9c/8, $8b/8, $db/8
+  rgbf $ce/8, $aa/8, $ed/8
 ; 4 blue
-  rgb $2b/8, $4e/8, $95/8
-  rgb $27/8, $89/8, $cd/8
-  rgb $42/8, $bf/8, $e8/8
-  rgb $73/8, $ef/8, $e8/8
+  rgbf $2b/8, $4e/8, $95/8
+  rgbf $27/8, $89/8, $cd/8
+  rgbf $42/8, $bf/8, $e8/8
+  rgbf $73/8, $ef/8, $e8/8
 ; 5 orange
-  rgb $ac/8, $32/8, $32/8
-  rgb $d9/8, $57/8, $63/8
-  rgb $fc/8, $a5/8, $70/8
-  rgb $ff/8, $e0/8, $b7/8
+  rgbf $ac/8, $32/8, $32/8
+  rgbf $d9/8, $57/8, $63/8
+  rgbf $fc/8, $a5/8, $70/8
+  rgbf $ff/8, $e0/8, $b7/8
 ; 6
-  rgb  0,  0,  0
-  rgb 13, 13, 13
-  rgb 22, 22, 22
-  rgb 31, 31, 31
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
 ; 7 status line?
-  rgb 0, 0, 0 ;$49/8,$41/8,$82/8
-  rgb $78/8,$64/8,$c6/8
-  rgb $9c/8,$8b/8,$db/8
-  rgb $ce/8,$aa/8,$ed/8
+  rgbf 0, 0, 0 ;$49/8,$41/8,$82/8
+  rgbf $78/8,$64/8,$c6/8
+  rgbf $9c/8,$8b/8,$db/8
+  rgbf $ce/8,$aa/8,$ed/8
 
-BG_PaletteBright:
-; Background palette
-; 0 terrain
-  rgb $02, $0d, $05
-  rgb $08, $15, $0A 
-  rgb $0D, $19, $10
-  rgb $12, $1B, $16
-; 1 wall
-  rgb $00, $0B, $07
-  rgb $00, $18, $0C
-  rgb $07, $1B, $0F
-  rgb $0D, $1F, $16
-; 2 parallax
-  rgb 27/8, 36/8, 71/8
-  rgb 43/8, 78/8, 149/8
-  rgb 22, 22, 22 ; unused
-  rgb 31, 31, 31 ; unused
-; 3 purple
-  rgb $49/8, $41/8, $82/8
-  rgb $78/8, $64/8, $c6/8
-  rgb $9c/8, $8b/8, $db/8
-  rgb $ce/8, $aa/8, $ed/8
-; 4 blue
-  rgb $2b/8, $4e/8, $95/8
-  rgb $27/8, $89/8, $cd/8
-  rgb $42/8, $bf/8, $e8/8
-  rgb $73/8, $ef/8, $e8/8
-; 5 orange
-  rgb $ac/8, $32/8, $32/8
-  rgb $d9/8, $57/8, $63/8
-  rgb $fc/8, $a5/8, $70/8
-  rgb $ff/8, $e0/8, $b7/8
-; 6
-  rgb  0,  0,  0
-  rgb 13, 13, 13
-  rgb 22, 22, 22
-  rgb 31, 31, 31
-; 7 status line?
-  rgb 0, 0, 0 ;$49/8,$41/8,$82/8
-  rgb $78/8,$64/8,$c6/8
-  rgb $9c/8,$8b/8,$db/8
-  rgb $ce/8,$aa/8,$ed/8
-
-Sprite_Palette:
+Sprite_Palette::
 ; Sprite palette
 ; 0 cyberspace blue
   rgb 0,  0,   0
@@ -383,7 +325,7 @@ Sprite_Palette:
   rgb  15-4, 8-4,  31-4       ; Purple (try to be more purple on GBC?)
   rgb  24-2, 24-2, $14 ;24-2  ; Light gray
 
-Sprite_PaletteBright:
+Sprite_PaletteBright::
 ; Sprite palette
 ; 0 cyberspace blue
   rgb 0,  0,   0
@@ -429,3 +371,46 @@ Sprite_PaletteBright:
   rgb  6,  6,  6              ; Black
   rgb  $0F, $09, $1C          ; Purple
   rgb  $16, $16, $15          ; Light gray
+
+BG_Menu_Palette_24bit::
+; Background palette
+; 0
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
+; 1
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
+; 2
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
+; 3
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
+; 4
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
+; 5
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
+; 6
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31
+; 7 status line?
+  rgbf  0,  0,  0
+  rgbf 13, 13, 13
+  rgbf 22, 22, 22
+  rgbf 31, 31, 31

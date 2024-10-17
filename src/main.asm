@@ -1,5 +1,5 @@
 ; Maffi cyberspace game
-; Copyright (C) 2022 NovaSquirrel
+; Copyright (C) 2022-2024 NovaSquirrel
 ;
 ; This program is free software: you can redistribute it and/or
 ; modify it under the terms of the GNU General Public License as
@@ -78,8 +78,8 @@ StartMainLoop::
 		call sgb_freeze
 	:
 
-	call FadeToWhite
-	call ScreenOff
+	call FadeToScreenOff
+
 	; On Game Boy Color, get rid of the face overlay tiles to make room for the player
 	ldh a, [IsNotGameBoyColor]
 	or a
@@ -206,7 +206,9 @@ StartMainLoop::
 	ldh [rSCX], a
 	ld a, [CameraYPixel]
 	ldh [rSCY], a
-	call FadeFromWhite
+
+	ld hl, BG_Gameplay_Palette_24bit
+	call FadeFromWhiteToPalette
 
 	; Set the palettes and attribute screen
 	ld a, [IsSuperGameBoy]
@@ -387,6 +389,11 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	call ClearPreviouslyUsedOAM
 	ldh a, [OAMWrite]
 	ld [PreviousOAMWrite], a
+
+	ldh a, [KeyNew]
+	and PADF_SELECT
+	jp nz, GoToNextLevel
+
 	jp forever
 
 ; Swaps sixteen bytes starting from HL and DE

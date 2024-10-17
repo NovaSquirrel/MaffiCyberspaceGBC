@@ -88,6 +88,13 @@ DMG_PlayerAnimationFrame_Page:: ds 1 ; For double buffering
 PreviousOAMWrite::            ds 1
 DMG_PlayerDrawDirection::     ds 1 ; Set when the animation frame copy finishes; used for the actual positioning/flipping decisions in DrawPlayer
 HaveCritterActive::           ds 1
+DieAnimationActive::          ds 1
+DieAnimationVYL::             ds 1
+DieAnimationPYL::             ds 1
+DieAnimationPYH::             ds 1
+DieAnimationVXL::             ds 1
+DieAnimationPXL::             ds 1
+DieAnimationPXH::             ds 1
 
 ; Timers - note the code in player.asm that will need to be updated if this is changed around
 PaintShootDiagonalTimer:: ds 1
@@ -170,15 +177,15 @@ Playfield::
 PlayfieldEnd::
 
 SECTION "GBC data", WRAMX, BANK[2], ALIGN[8]
-BG_Palette_RGB888_Current::  ds 8*4*3
-OBJ_Palette_RGB888_Current:: ds 8*3*3
+BG_Palette_24bit_Current::  ds 8*4*3
+OBJ_Palette_24bit_Current:: ds 8*3*3
 	ds (256 - 8*4*3 - 8*3*3)
-BG_Palette_RGB888_Delta::    ds 8*4*3
-OBJ_Palette_RGB888_Delta::   ds 8*3*3
+BG_Palette_24bit_Delta::    ds 8*4*3
+OBJ_Palette_24bit_Delta::   ds 8*3*3
 	ds (256 - 8*4*3 - 8*3*3)
-BG_Palette_RGB888_Target::  ds 8*4*3
-OBJ_Palette_RGB888_Target:: ds 8*3*3
+BG_Palette_24bit_Target::  ds 8*4*3
+OBJ_Palette_24bit_Target:: ds 8*3*3
 	ds (256 - 8*4*3 - 8*3*3)
-BG_Palette_RGB555::          ds 8*4*2
-OBJ_Palette_RGB555::         ds 8*3*2
+BG_Palette_15bit::         ds 8*4*2
+OBJ_Palette_15bit::        ds 8*3*2
 	ds (256 - 8*4*2 - 8*3*2)

@@ -67,6 +67,10 @@ RunPlayer::
 
 	; -------------------------------------------
 
+	ld a, [DieAnimationActive]
+	or a
+	ret nz
+
 	ldh a, [KeyDown]
 	and PADF_UP
 	jr z, .NoUp
@@ -537,6 +541,34 @@ DrawPlayer::
 		ld [hl], a ; Y
 	:
 
+	; Die animation
+	ld hl, DieAnimationActive
+	ld a, [hl+]
+	or a
+	jr z, .NoDieAnimation
+		; Increase gravity
+		ld a, [hl]  ; VYL
+		cp $78
+		jr z, :+
+			add 4
+		:
+		ld [hl], a  ; VYL
+		call DieAnimationShared
+		add e
+		ld e, a
+
+		cp 144+16
+		jr c, :+
+			ld a, [LevelID]
+			jp StartLevel
+		:
+
+		ld a, [hl]
+		call DieAnimationShared
+		add d
+		ld d, a
+	.NoDieAnimation:
+
 	; Get the animation frame for the direction, which will become a source pointer for the DMA or the slower copy
 	ld a, [PlayerDrawDirection]
 	ld hl, PlayerFrameForPose
@@ -559,9 +591,13 @@ DrawPlayer::
 
 
 	; Hurt animation
+	ld a, [DieAnimationActive]
+	or a
+	jr nz, .DoDieAnimation
 	ld a, [PlayerInvincibleTimer]
 	cp PLAYER_HURT_INVINCIBILITY - 30
 	jr c, :+
+	.DoDieAnimation:
 		ld a, [PlayerAnimationFrame]
 		add PLAYER_FRAME_R_HURT - PLAYER_FRAME_R
 		ld [PlayerAnimationFrame], a
@@ -796,6 +832,27 @@ DrawRollingBrushBelow:
 	ld a, l
 	ldh [OAMWrite], a
 	ret
+
+DieAnimationShared:
+	sex
+	ld b, a
+
+	ld a, [hl+] ; VYL
+	add [hl]    ; PYL
+	ld [hl+], a ; PYL
+	ld c, a     ; C = PYL
+
+	ld a, b
+	adc [hl]    ; PYH
+	ld [hl+], a  ; PYH
+	ld b, a     ; B = PYH
+	ld a, c
+	rept 4
+	srl b
+	rra
+	endr
+	ret
+
 
 PlayerFrameForPose:
 	db PLAYER_FRAME_R, PLAYER_FRAME_D, PLAYER_FRAME_R, PLAYER_FRAME_U

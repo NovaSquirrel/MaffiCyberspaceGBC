@@ -84,8 +84,7 @@ RunBlockExit::
 		ld a, [HaveCritterActive]
 		or a
 		ret nz
-		xor a
-		jp StartLevel
+		jp GoToNextLevel
 	:
 
 	ld a, [HaveCritterActive]

@@ -137,8 +137,8 @@ ActorKitty::
 			call ActorGetAngleTowardPlayer
 			ld b, a
 			call RandomByte
-			and 7
-			sub 4
+			and 15
+			sub 7
 			add b
 			rrca
 			rrca
@@ -1277,19 +1277,6 @@ ActorWalkTowardPlayerAndBump::
 	rl b
 	ret
 
-
-MaybeNegative:
-	push af
-	call RandomByte
-	rra
-	jr c, :+
-	pop af
-	cpl
-	inc a
-	ret
-:	pop af
-	ret
-
 ActorGetAngleTowardPlayer:
 	ld hl, actor_pyl
 	add hl, de
@@ -1558,23 +1545,7 @@ DrawEnemy_16x16_AndCollide:
 	or a
 	ret nz
 	call CollideWithPlayer
-	ret nc
-	ld a, PLAYER_HURT_INVINCIBILITY
-	ld [PlayerInvincibleTimer], a
-
-	; Remove health, and show this onscreen
-	ld a, [PlayerHealth]
-	or a
-	ret z
-	ld hl, _SCRN1+14
-	rst AddHL_A
-
-	ld a, [PlayerHealth]
-	dec a
-	ld [PlayerHealth], a
-
-	wait_vram
-	ld [hl], $F7
+	jp c, HurtPlayer
 	ret
 
 KnockbackXYForRollDirections:

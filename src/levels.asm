@@ -38,25 +38,69 @@ StartLevel::
 
 	call InitParallax
 
-	ld hl, TestLevel
+	ld a, BANK(TestLevel)
+	ld [rROMB0], a
+	ld a, [LevelID]
+	add a
+	ld hl, LevelPointers
+	rst AddHL_A
+	ld a, [hl+]
+	ld h, [hl]
+	ld l, a
 	call LoadLevel
 
 	jp StartMainLoop
 
 SECTION "Level Data", ROMX
 
+LevelPointers:
+	dw SimpleLevel
+	dw SmallTightMazeLevel
+	dw WideOpenLevel
+	dw BigMazeLevel
+
+SimpleLevel:
+	LevelRect 30, 30, 8, 8
+	LevelAddWalls WALL_75P
+	LevelPutAnywhere 2, BlockType_RescueCritter
+	LevelPutAnywhere 1, BlockType_Exit
+	LevelAddFloors FLOOR_RARE_STARS
+	db LC_END
+
+SmallTightMazeLevel:
+	LevelRect 20, 20, 56-40, 56-40
+	LevelAddWalls WALL_93P
+	LevelPutAnywhere 3, BlockType_RescueCritter
+	LevelPutAnywhere 1, BlockType_Exit
+	LevelAddFloors FLOOR_RARE_STARS
+	db LC_END
+
+WideOpenLevel:
+	LevelRect 20, 20, 56-40, 56-40
+	LevelAddWalls WALL_25P
+	LevelPutAnywhere 5, BlockType_RescueCritter
+	LevelPutAnywhere 1, BlockType_Exit
+	LevelAddFloors FLOOR_RARE_STARS
+	db LC_END
+
+BigMazeLevel:
+	LevelRect 12, 12, 56-24, 56-24
+	LevelAddWalls WALL_75P
+	LevelPutAnywhere 3, BlockType_RescueCritter
+	LevelPutAnywhere 1, BlockType_Exit
+	LevelAddFloors FLOOR_RARE_STARS
+	db LC_END
+
 TestLevel:
 ;	db LC_RECT, 20,20, 15, 15
 ;	db LC_TYPE, LEVEL_AREA_2
 ;	db LC_RECT, 35,20, 5, 15
-
 ;	LevelRect 12, 12, 56-24, 56-24
 	LevelRect 20, 20, 56-40, 56-40
 ;	LevelRect 4, 4, 56, 56
-	LevelAddWalls WALL_93P
+	LevelAddWalls WALL_25P ;93P
 	LevelPutAnywhere 3, BlockType_RescueCritter
 ;	LevelPutWithinRect 8, 8, 16, 16, 5, BlockType_EnemyPaint
 	LevelPutAnywhere 1, BlockType_Exit
 	LevelAddFloors FLOOR_RARE_STARS
-
 	db LC_END

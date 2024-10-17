@@ -1,5 +1,5 @@
 ; Maffi cyberspace game
-; Copyright (C) 2022 NovaSquirrel
+; Copyright (C) 2022-2024 NovaSquirrel
 ;
 ; This program is free software: you can redistribute it and/or
 ; modify it under the terms of the GNU General Public License as
@@ -22,6 +22,11 @@ include "include/hardware.inc/hardware.inc"
 SECTION "miscellaneous", ROM0
 
 ScreenOff::
+	; Is the screen already off?
+	ldh a,[rLCDC]
+	add a
+	ret nc
+
 	call WaitVblank
 	xor a
 	ldh [rLCDC], a
@@ -694,6 +699,59 @@ SharedCameraSubtractCode::
 	endr
 	adc 0
 	; A = low half of BC>>4
+	ret
+
+HurtPlayer::
+	ld a, [PlayerInvincibleTimer]
+	or a
+	ret nz
+	ld a, PLAYER_HURT_INVINCIBILITY
+	ld [PlayerInvincibleTimer], a
+
+	; Remove health, and show this onscreen
+	ld a, [PlayerHealth]
+	or a
+	ret z
+	ld hl, _SCRN1+14
+	rst AddHL_A
+
+	wait_vram
+	ld [hl], $F7
+
+	ld hl, PlayerHealth
+	dec [hl]
+	jr nz, :+
+		ld a, [DieAnimationActive]
+		or a
+		jr nz, :+
+			inc a
+			ld [DieAnimationActive], a
+			ld a, -$40
+			ld [DieAnimationVYL], a
+
+			call RandomByte
+			and 31
+			sub 16
+			ld [DieAnimationVXL], a
+	:
+	ret
+
+GoToNextLevel::
+	ld a, [LevelID]
+	inc a
+	and 3
+	jp StartLevel
+
+MaybeNegative::
+	push af
+	call RandomByte
+	rra
+	jr c, :+
+	pop af
+	cpl
+	inc a
+	ret
+:	pop af
 	ret
 
 ; -----------------------------------------------

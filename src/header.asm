@@ -27,6 +27,7 @@ AddHL_A::
 	ret nc
 	inc h
 	ret
+	; 3 bytes free
 SECTION "rst10", ROM0[$0010]
 MemcpySmall::
 	ld a, [hli]
@@ -35,25 +36,30 @@ MemcpySmall::
 	dec c
 	jr nz, MemcpySmall
 	ret
+	; 1 byte free
 SECTION "rst18", ROM0[$0018]
 MemsetSmall::
 	ld [hli], a
 	dec c
 	jr nz, MemsetSmall
 	ret
+	; 3 bytes free
 SECTION "rst20", ROM0[$0020]
 CallDE::
 	push de
 	ret
+	; 6 bytes free
 SECTION "rst28", ROM0[$0028]
 CallHLIndirect::
 	ld a, [hl+]
 	ld h, [hl]
 	ld l, a
 	jp hl
+	; 4 bytes free
 SECTION "rst30", ROM0[$0030]
 	ret
 SECTION "rst38", ROM0[$0038]
+	; Should put some sort of error handler here
 	ret
 
 ; $0040 - $0067: Interrupt handlers.
@@ -154,15 +160,45 @@ EntryPoint:
 	or a
 	call nz, SetupSGB ; Sets up a library of palettes and attribute screens, so that the game can just use the PAL_SET command later
 
-	; Copy in DMA routine
+	call ScreenOff ; SetupSGB will turn the screen off, but make sure it's off on GB and GBC too
+
+	; Copy in OAM DMA routine
 	ld hl, oam_dma_routine
 	ld de, RunOamDMA
 	ld c, oam_dma_routine_end - oam_dma_routine
 	call memcpy8
 
+	; Set sprite palettes on GBC only
 	ldh a, [IsNotGameBoyColor]
 	or a
-	call z, UploadGameplayPalette
+	jr nz, .DontLoadSpritePalettes
+		ld a, BANK(Sprite_Palette)
+		ld [rROMB0], a
+
+		ld a, OCPSF_AUTOINC   ; index zero, auto increment
+		ldh [rOCPS], a        ; background palette index
+		ld hl, Sprite_Palette
+		ld a, [UseBrighterPalettes]
+		or a
+		jr z, :+
+			ld hl, Sprite_PaletteBright
+		:
+		ld b, 2*4*8
+	:	ld a, [hl+]
+		ldh [rOCPD], a
+		dec b
+		jr nz, :-
+
+		; Initialize BG_Palette_24bit_Current to white
+		ld a, BANK(BG_Palette_24bit_Current)
+		ldh [rSMBK], a
+		ld hl, BG_Palette_24bit_Current
+		ld c, 8*4*3
+		ld a, 31*8
+		rst MemsetSmall
+		ld a, BANK(Playfield)
+		ldh [rSMBK], a
+	.DontLoadSpritePalettes:
 
 	; ---------------------------------------------------------------
 
@@ -173,45 +209,7 @@ EntryPoint:
 	ld a, %00011111 ; transparent, dark gray, light gray, white
 	ldh [rOBP1], a
 
-	; Results in a lot of closed-off tiles
-	; which is great for testing the maze fixer.
-	ld a, 25
-	ldh [seed], a
-	ld a, 145
-	ldh [seed+1], a
-	ld a, 161
-	ldh [seed+2], a
-	ld a, 81
-	ldh [seed+3], a
-
-	ld bc, 1234
-	call SeedRandomLCG
-
-	; TODO: Show a title screen of some sort
-	xor a
-	ld hl, _SCRN0
-	ld bc, 1024
-	ld a, $f0
-	call memset
-	ldh a, [IsNotGameBoyColor]
-	or a
-	jr z, :+
-		ld a, 1
-		ldh [rVBK], a
-		ld hl, _SCRN0
-		ld bc, 1024
-		call memclear
-		xor a
-		ldh [rVBK], a
-	:
-	; Turn on screen
-	ld a, LCDCF_ON|LCDCF_OBJ16|LCDCF_OBJON|LCDCF_BGON|LCDCF_BG8800|LCDCF_WIN9C00
-	ldh [rLCDC],a
-
-	; Start the first level
-	xor a
-	ld [HaveGameplayGraphicsInVRAM], a
-	jp StartLevel
+	jp ShowTitleScreen
 
 SECTION "stat2", ROM0
 stat_continued:
