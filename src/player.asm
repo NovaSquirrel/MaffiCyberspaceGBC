@@ -64,6 +64,17 @@ RunPlayer::
 		ld [PaintAmount], a
 	:
 	.NoRefill:
+	inc hl
+	ld a, [hl] ; HL: PlayerNotMovingTimer
+	inc a
+	jr z, :+
+		inc [hl]
+	:
+	ldh a, [KeyDown]
+	and PADF_LEFT | PADF_DOWN | PADF_UP | PADF_RIGHT
+	jr z, :+
+		ld [hl], 0
+	:
 
 	; -------------------------------------------
 

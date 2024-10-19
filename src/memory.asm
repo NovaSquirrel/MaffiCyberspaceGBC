@@ -95,13 +95,15 @@ DieAnimationPYH::             ds 1
 DieAnimationVXL::             ds 1
 DieAnimationPXL::             ds 1
 DieAnimationPXH::             ds 1
+HintTarget::                  ds 1 ; hhhttttt, where the top bits are the actual target and t is the timer
 
 ; Timers - note the code in player.asm that will need to be updated if this is changed around
 PaintShootDiagonalTimer:: ds 1
 PaintShootingTimer::      ds 1
 PlayerInvincibleTimer::   ds 1
-ZeroWhenLevelStarts_End:: ;--------------------------------
 PaintRefillCooldown::     ds 1
+PlayerNotMovingTimer::    ds 1
+ZeroWhenLevelStarts_End:: ;--------------------------------
 
 
 ; Variables for the alternative player frame streaming that's used when DMA is not available
@@ -122,6 +124,7 @@ MazeExitX:: ds 1
 MazeExitY:: ds 1
 CritterXYList:: ds 7*2 ; Must not have more than 7
 RescueCritterCount:: ds 1
+RescueCritterOriginalCountTimes32:: ds 1
 
 UseBrighterPalettes:: ds 1 ; Use an alternative, brighter palette, for darker screens
 

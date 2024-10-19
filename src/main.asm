@@ -40,8 +40,6 @@ StartMainLoop::
 	ld hl, ZeroWhenLevelStarts
 	ld bc, ZeroWhenLevelStarts_End-ZeroWhenLevelStarts
 	call memclear
-	xor a
-	ld [PaintRefillCooldown], a
 
 	ld a, 32
 	ldh [PlayerPXH], a
@@ -371,6 +369,164 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	inc h
 	inc d
 	call SwapSixteenBytes
+
+	; Show a hint if the player stands still for long enough
+	ld a, [PlayerNotMovingTimer]
+	cp 90
+	jp c, .NoHint
+		ld a, [HaveCritterActive]
+		or a
+		jr nz, .HintAtExit
+		ld a, [RescueCritterCount]
+		or a
+		jr z, .HintAtExit
+		xor a
+		ldh [temp1], a ; temp1 is the number of tries
+		.HintAtCritter:
+			ldh a, [framecount] 
+			rra
+			jr nc, :+
+				; Increment the timer
+				ld a, [HintTarget]
+				inc a
+				ld [HintTarget], a
+			:
+		.TryThisTarget:
+			; Is the current target >= the amount of critters there are?
+			ld hl, RescueCritterOriginalCountTimes32
+			ld a, [HintTarget]
+			and %11100000
+			cp [hl]
+			jr c, :+
+				ld a, [HintTarget]
+				and %00011111
+				ld [HintTarget], a
+			:
+
+			; Get just the target number
+			rlca
+			rlca
+			rlca
+
+			; Get coordinates for this target
+			ld hl, CritterXYList
+			add a
+			rst AddHL_A
+			ld a, [hl+]
+			ld h, [hl]
+			ld l, a
+
+			; Get block at these coordinates
+			push hl
+			call MapPointerLH_XY
+			ld a, [hl]
+			pop hl
+			cp BlockType_RescueCritter
+			jr z, .Hint_LH_XY
+		.NextTarget:
+			ld a, [HintTarget]
+			add 32
+			ld [HintTarget], a
+
+			ldh a, [temp1] ; Tries
+			inc a
+			ldh [temp1], a
+			; If it's made 8 tries and there isn't a critter at any of them, that's bad and means the code isn't working how I expect,
+			; and this did come up during testing once. But it shouldn't make the game hang.
+			cp 8
+			jr nz, .TryThisTarget
+			ld b,b ; Have a breakpoint so I can look into this more
+			jr .NoHint
+
+		.HintAtExit:
+			ld hl, MazeExitX
+			ld a, [hl+]
+			ld h, [hl]
+			ld l, a
+		.Hint_LH_XY:
+			; X position
+			ldh a, [CameraX+0]
+			ld c, a
+			ldh a, [CameraX+1]
+			ld b, a
+			;---
+			xor a
+			sub c
+			ld c, a
+			ld a, l ; X position
+			call SharedCameraSubtractCode
+			add 8+4
+			ld d, a
+
+			; Y position
+			ldh a, [CameraY+0]
+			ld c, a
+			ldh a, [CameraY+1]
+			ld b, a
+			;---
+			xor a
+			sub c
+			ld c, a
+			ld a, h ; Y position
+			call SharedCameraSubtractCode
+			add 16
+			ld e, a
+
+			ld c, 0 ; Tile/attributes
+
+			; Snap
+			ldh a, [CameraX+1]
+			ld b, a
+			cp l
+			jr c, :+
+				ld d, 8
+				ld c, TILE_ID_ARROW_RIGHT | OAMF_XFLIP
+			:
+			ld a, 9
+			add b
+			cp l
+			jr nc, :+
+				ld d, 8+160-8
+				ld c, TILE_ID_ARROW_RIGHT | 0
+			:
+
+			ldh a, [CameraY+1]
+			ld b, a
+			cp h
+			jr c, :+
+				ld e, 16-4
+				ld c, TILE_ID_ARROW_DOWN | OAMF_YFLIP
+			:
+			ld a, 8
+			add b
+			cp h
+			jr nc, :+
+				ld e, 16+144-16-4
+				ld c, TILE_ID_ARROW_DOWN | 0
+			:
+
+			; If no snapping was done, this means the hint isn't needed
+			ld a, c
+			or a
+			jr z, .NoHint
+
+			; Add the sprite
+			ld h, HIGH(OamBuffer)
+			ldh a, [OAMWrite]
+			ld l, a
+			ld a, e ; Y
+			ld [hl+], a
+			ld a, d ; X
+			ld [hl+], a
+			ld a, c
+			and %00011111
+			ld [hl+], a ; Tile
+			ld a, c
+			and OAMF_YFLIP | OAMF_XFLIP
+			ld [hl+],a ; Attribute
+			ld a, l
+			ldh [OAMWrite], a
+	.NoHint:
 
 	; CPU usage check
 ;	ld h, HIGH(OamBuffer)

@@ -49,6 +49,12 @@ StartLevel::
 	ld l, a
 	call LoadLevel
 
+	ld a, [RescueCritterCount]
+	rrca
+	rrca
+	rrca
+	ld [RescueCritterOriginalCountTimes32], a
+
 	jp StartMainLoop
 
 SECTION "Level Data", ROMX
