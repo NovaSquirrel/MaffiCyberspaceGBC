@@ -24,6 +24,8 @@ SECTION "MainMenu", ROM0
 ShowTitleScreen::
 	call FadeToScreenOff
 
+	call ClearOAM
+
 	xor a
 	ldh [rVBK], a
 	call ClearNametable
@@ -55,6 +57,18 @@ ShowTitleScreen::
 	ld hl, BG_Menu_Palette_24bit
 	call FadeFromWhiteToPalette
 
+	ld a, [IsSuperGameBoy]
+	or a
+	jr z, :+
+		ld a, BANK(sgb_set_palettes_bcde_attr_a)
+		ld [rROMB0], a
+		ld b, 13
+		ld c, 1
+		ld d, 2
+		ld e, 3
+		ld a, %11000000 ; Apply ATF, cancel mask, ATF 0
+		call sgb_set_palettes_bcde_attr_a
+	:
 .loop:
 	call WaitVblank
 	call ReadKeys

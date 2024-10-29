@@ -62,11 +62,11 @@ RunBlockStar::
 	jp BlockChangeForPlayer
 
 RunRescueCritter::
-	ld a, [HaveCritterActive]
-	or a
-	ret nz
-	inc a
-	ld [HaveCritterActive], a
+	push hl
+	ld b, ActorType_FollowingCritter
+	call FindFirstActorOfTypeB ; Carry = Not found
+	pop hl
+	ret nc
 
 	push hl
 	ld a, ActorType_FollowingCritter
@@ -77,28 +77,21 @@ RunRescueCritter::
 	jp BlockChangeForPlayer
 
 RunBlockExit::
-	; Potentially exit the level
+	ld b, ActorType_FollowingCritter
+	call FindFirstActorOfTypeB ; Carry = Not found
+	jr nc, .CritterGoesHome
+
+	; Exit the level if there's no critters left
 	ld a, [RescueCritterCount]
 	or a
-	jr nz, :+
-		ld a, [HaveCritterActive]
-		or a
-		ret nz
-		jp GoToNextLevel
-	:
+	jp z, GoToNextLevel
+	ret
 
-	ld a, [HaveCritterActive]
-	or a
-	ret z
-
-	ld b, ActorType_FollowingCritter
-	call FindFirstActorOfTypeB
-	ret c
-
+.CritterGoesHome:
 	switch_hl_to_field actor_type, actor_state
 	ld a, [hl]
 	or a
-	ret nz ; Already 1
+	ret nz ; State already 1
 	ld [hl], 1 ; Change the state to something nonzero to signal it should go to the exit
 	switch_hl_to_field actor_state, actor_var1
 	ld [hl], 0 ; Will use this as a timer

@@ -87,7 +87,6 @@ PaintShotID::                 ds 1 ; Increments every shot
 DMG_PlayerAnimationFrame_Page:: ds 1 ; For double buffering
 PreviousOAMWrite::            ds 1
 DMG_PlayerDrawDirection::     ds 1 ; Set when the animation frame copy finishes; used for the actual positioning/flipping decisions in DrawPlayer
-HaveCritterActive::           ds 1
 DieAnimationActive::          ds 1
 DieAnimationVYL::             ds 1
 DieAnimationPYL::             ds 1

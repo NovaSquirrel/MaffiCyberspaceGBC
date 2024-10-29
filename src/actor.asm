@@ -607,7 +607,6 @@ ActorFollowingCritter::
 	jr c, .DontRemoveYet
 		xor a
 		ld [de], a
-		ld [HaveCritterActive], a
 
 		ld a, [RescueCritterCount]
 		or a

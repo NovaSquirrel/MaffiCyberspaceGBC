@@ -754,6 +754,15 @@ MaybeNegative::
 :	pop af
 	ret
 
+ClearOAM::
+	xor a
+	ldh [rIE], a     ; Disable interrupts just in case
+	ld hl, OamBuffer
+	ld c, 0
+	call memclear8
+	ld a, OamBuffer>>8
+	jp RunOamDMA
+
 ; -----------------------------------------------
 ; LCD copy routines, by ISSOtm
 

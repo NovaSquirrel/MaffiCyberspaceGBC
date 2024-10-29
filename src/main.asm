@@ -72,13 +72,7 @@ StartMainLoop::
 
 	call FadeToScreenOff
 
-	xor a
-	ldh [rIE], a     ; Disable interrupts just in case
-	ld hl, OamBuffer
-	ld c, 0
-	call memclear8
-	ld a, OamBuffer>>8
-	call RunOamDMA
+	call ClearOAM
 
 	; On Game Boy Color, get rid of the face overlay tiles to make room for the player
 	ldh a, [IsNotGameBoyColor]
@@ -220,7 +214,7 @@ StartMainLoop::
 		ld c, 1
 		ld d, 2
 		ld e, 3
-		ld a, %11000001
+		ld a, %11000001 ; Apply ATF, cancel mask, ATF 1
 		call sgb_set_palettes_bcde_attr_a
 	:
 forever:
@@ -374,9 +368,9 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	ld a, [PlayerNotMovingTimer]
 	cp 90
 	jp c, .NoHint
-		ld a, [HaveCritterActive]
-		or a
-		jr nz, .HintAtExit
+		ld b, ActorType_FollowingCritter
+		call FindFirstActorOfTypeB ; Carry = Not found
+		jr nc, .HintAtExit
 		ld a, [RescueCritterCount]
 		or a
 		jr z, .HintAtExit
@@ -523,6 +517,7 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 			ld [hl+], a ; Tile
 			ld a, c
 			and OAMF_YFLIP | OAMF_XFLIP
+			or OAMF_PAL1
 			ld [hl+],a ; Attribute
 			ld a, l
 			ldh [OAMWrite], a
