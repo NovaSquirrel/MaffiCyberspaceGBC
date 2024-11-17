@@ -87,7 +87,13 @@ ActorSneaker::
 	call EnemyCommon
 	jr nc, .DrawOnly
 
-	ld a, $08
+	ld b, $08
+	call ActorGetTileUnderneath
+	cp BlockType_Paint
+	jr nz, :+
+		ld b, $04
+	:
+	ld a, b
 	call ActorWalkTowardPlayerAndBump
 
 .DrawOnly:
@@ -150,7 +156,7 @@ ActorKitty::
 			ld a, 64
 			add_hl_a
 			ld c, [hl]
-	
+
 			ld hl, actor_vxl
 			add hl, de
 			ld [hl], b
@@ -174,21 +180,37 @@ ActorKitty::
 		ld [hl], a
 	.noChangeDirection:
 
+	; Apply VXL and VYL
 	ld hl, actor_vxl
 	add hl, de
+
 	ld a, [hl]
-	ld c, a ; Save
-	and 128
+	and 128   ; Get VXL sign
 	ld b, a
+
 	ld a, [de]
 	and 127
-	or b
+	or b      ; Copy to direction bit
 	ld [de], a
-	ld a, c ; Restore
+
+	push hl
+	call ActorGetTileUnderneath
+	pop hl
+	cp BlockType_Paint
+	push af ; Save the Z flag
+	jr nz, :+
+		ld a, [hl]
+		sra a
+		jr .SlowX
+	:
+
+	ld a, [hl] ; Get VXL again
+	.SlowX:
 	push hl
 	call ActorWalkXAndBump
 	pop hl
 	jr nc, :+
+		; Negate VXL
 		ld a, [hl]
 		cpl
 		inc a
@@ -197,11 +219,21 @@ ActorKitty::
 
 	ld hl, actor_vyl
 	add hl, de
+
+	pop af ; Z flag from "cp BlockType_Paint"
+	jr nz, :+
+		ld a, [hl]
+		sra a
+		jr .SlowY
+	:
+
 	ld a, [hl]
+	.SlowY:
 	push hl
 	call ActorWalkYAndBump
 	pop hl
 	jr nc, :+
+		; Negate VYL
 		ld a, [hl]
 		cpl
 		inc a
@@ -1313,6 +1345,19 @@ ActorGetAngleTowardPlayer:
 
 	jp atan2_bc_xy
 
+ActorGetTileUnderneath:
+	ld hl, actor_pyh
+	add hl, de
+	ld a, [hl+] ; HL = actor_pyh
+	push af
+	inc l       ; HL = actor_pxl
+	ld l, [hl]  ; HL = actor_pxh
+	pop af
+	ld h, a
+
+	call MapPointerLH_XY
+	ld a, [hl]
+	ret
 
 ; ---------------------------------------------------------
 
