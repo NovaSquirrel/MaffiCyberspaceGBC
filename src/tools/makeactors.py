@@ -7,6 +7,7 @@ import sys
 ACTOR_POINTER_SECTION = 'SECTION FRAGMENT "ActorCode", ROMX, ALIGN[8]'
 ACTOR_DATA_SECTION = 'SECTION FRAGMENT "ActorCode", ROMX'
 ACTOR_ROM0_SECTION = 'SECTION FRAGMENT "ActorGlobal", ROM0'
+ACTOR_GRAPHICS_SECTION = 'SECTION "ActorGraphics", ROMX'
 
 # ---------------------------
 
@@ -22,6 +23,7 @@ actor = None
 
 # Actor information (for all actors)
 all_actors = []
+all_tilesets = set()
 
 # Utility functions
 def separateFirstWord(text, lowercaseFirst=True):
@@ -59,7 +61,7 @@ for line in text:
 	if line.startswith("+"): # new actor
 		saveActor()
 		# Reset to prepare for the new actor
-		actor = {"name": line[1:], "run": "ActorNothing", "health": "$10", "important": False, "unimportant": False}
+		actor = {"name": line[1:], "run": "ActorNothing", "health": "$10", "important": False, "unimportant": False, "tileset": None}
 		continue
 	word, arg = separateFirstWord(line)
 	# Miscellaneous directives
@@ -71,9 +73,14 @@ for line in text:
 		actor[word] = True
 	elif word in ["health", "run"]:
 		actor[word] = arg
+	elif word == "tileset":
+		actor[word] = arg
+		all_tilesets.add(arg)
 
 # Save the last one
 saveActor()
+
+all_tilesets = list(all_tilesets)
 
 # -------------------------------------------------------------------
 
@@ -99,11 +106,33 @@ outfile.write('\nActorHealth::\n')
 for a in all_actors:
 	outfile.write('db %s\n' % a["health"])
 
+outfile.write('\nActorTilesetPointers::\n')
+for tileset in all_tilesets:
+	outfile.write('dw ActorTileset_Data_%s\n' % tileset)
+
 outfile.write('\n%s\n' % ACTOR_ROM0_SECTION)
 
 outfile.write('\nActorFlags::\n')
 for a in all_actors:
 	outfile.write('db %x|%x\n' % (a["unimportant"]*128, a["important"]*64))
+
+outfile.write('\nActorTileset::\n')
+for a in all_actors:
+	if a["tileset"] == None:
+		outfile.write('db 0\n')
+	else:
+		outfile.write('db %d ; %s\n' % (all_tilesets.index(a["tileset"])+1, a["tileset"]))
+
+# Sprite tileset RAM
+outfile.write('\nSECTION "FirstTileNumberForActorTileset", WRAM0\n')
+outfile.write('FirstTileNumberForActorTileset:: ds %d\n' % (len(all_tilesets)+1))
+outfile.write('FirstTileNumberForActorTilesetEnd::\n')
+
+# Sprite tileset incbins
+outfile.write('\n%s\n' % ACTOR_GRAPHICS_SECTION)
+outfile.write('ActorTileset_Data::\n')
+for tileset in all_tilesets:
+	outfile.write('ActorTileset_Data_%s: incbin "res/tilesets_8x16/%s.pb16"\n' % (tileset, tileset))
 
 outfile.close()
 
@@ -115,6 +144,10 @@ outfile.write('; This is automatically generated. Edit "%s" instead\n' % actor_d
 
 for i, b in enumerate(all_actors):
 	outfile.write('DEF ActorType_%s EQU %d\n' % (b['name'], i))
+
+for i, t in enumerate(all_tilesets):
+	outfile.write('DEF ActorTileset_%s EQU %d\n' % (t, i))
+
 outfile.write('\n')
 
 outfile.close()

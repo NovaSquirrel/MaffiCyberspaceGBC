@@ -119,15 +119,70 @@ StartMainLoop::
 		call pb16_unpack_block
 	.AlreadyHaveSharedGraphics:
 
-	; Load per-level graphics
-	ld de, SpWalkerTileset
-	ld hl, _VRAM8000 + $500
-	ld b, 16
+	; ---------------------------------
+	; Load actor graphics for the level
+	xor a
+	ld [FirstTileNumberForActorTileset], a ; First entry is always zero, for actors that don't use an offset
+
+	; Iterate over each actor tileset that this level requires, upload each of them to VRAM, and record where in VRAM each tileset is
+	ld hl, ActorTilesetList ; TODO: Pull from a per-level list?
+	ld b, $50 ; First tile number for the current actor tileset
+.ActorTilesetLoop:
+	ld a, [hl+]
+	ld c, a ; Tileset ID for this slot
+	inc a   ; Check for 255, which marks the end of the list
+	jr z, .ActorTilesetLoopEnd
+
+	push hl
+	; [FirstTileNumberForActorTileset+1] = starting tile number for this tileset
+	ld a, c
+	ld hl, FirstTileNumberForActorTileset+1 ; Actual offsets start at the second entry
+	rst AddHL_A
+	ld [hl], b ; Starting tile number
+
+	ld a, BANK(ActorTilesetPointers)
+	ld [rROMB0], a
+	ld hl, ActorTilesetPointers
+	ld a, c
+	add a
+	rst AddHL_A
+	ld e, [hl] ; Get pointer from ActorTilesetPointers
+	inc hl
+	ld d, [hl]
+
+	ld a, BANK(ActorTileset_Data)
+	ld [rROMB0], a
+
+	push bc
+	; DE = Pointer to the compressed graphics
+	ld l, b
+	ld h, $08  ; %00001000 bbbbbbbb
+	add hl, hl ; %0001000b bbbbbbb0
+	add hl, hl ; %001000bb bbbbbb00
+	add hl, hl ; %01000bbb bbbbb000
+	add hl, hl ; %1000bbbb bbbb0000 - HL = Pointer to area in VRAM to write to
+	ld b, 16   ; 16 tiles
 	call pb16_unpack_block
-	ld de, SpBallTileset
-	ld hl, _VRAM8000 + $600
-	ld b, 16
-	call pb16_unpack_block
+	pop bc
+
+	; Next tileset
+	pop hl
+	ld a, b ; The next tileset will be 16 tiles later in VRAM
+	add $10
+	ld b, a
+	jr .ActorTilesetLoop
+.ActorTilesetLoopEnd:
+
+
+;	; Load per-level graphics
+;	ld de, SpWalkerTileset
+;	ld hl, _VRAM8000 + $500
+;	ld b, 16
+;	call pb16_unpack_block
+;	ld de, SpBallTileset
+;	ld hl, _VRAM8000 + $600
+;	ld b, 16
+;	call pb16_unpack_block
 
 	; .----------------------------------------------------
 	; | Initialize registers
@@ -795,6 +850,12 @@ SpawnEnemy:
 	dec b
 	jr nz, .TrySpawnEnemy
 	ret
+
+
+ActorTilesetList:
+	db ActorTileset_sp_ball
+	db ActorTileset_sp_walker
+	db 255
 
 SECTION "Tileset", ROMX
 

@@ -3,9 +3,11 @@ run ActorNothing
 
 +Sneaker
 run ActorSneaker
+tileset sp_walker
 
 +Kitty
 run ActorKitty
+tileset sp_walker
 
 +PaintProjectile
 run ActorPaintProjectile
@@ -30,3 +32,6 @@ important
 run ActorExitReady
 unimportant
 
++Burger
+run ActorBurger
+tileset sp_ball

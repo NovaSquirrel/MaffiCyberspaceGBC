@@ -100,7 +100,6 @@ ActorSneaker::
 	ldh a, [framecount]
 	rrca
 	and %100
-	add a, $50
 	ld b, 0
 	jp DrawEnemy_16x16_AndCollide
 
@@ -245,7 +244,7 @@ ActorKitty::
 	rrca
 	rrca
 	and %100
-	add a, $58
+	add a, $08
 	ld b, 0
 	jp DrawEnemy_16x16_AndCollide
 
@@ -385,6 +384,11 @@ ActorPoof::
 	ld a, [hl]
 	and %1100
 	add TILE_ID_POOF_ANIMATION
+	ld b, 0
+	jp DrawActor_16x16
+
+ActorBurger::
+	ld a, 0
 	ld b, 0
 	jp DrawActor_16x16
 
@@ -1387,6 +1391,19 @@ DrawActorFlipped:
 
 ; ---------------------------------------------------------
 
+MACRO offset_tile_number_by_sprite_tileset_placement
+	push af
+	ld hl, ActorTileset
+	ld a, [de]
+	and 127 ; Mask off the direction bit
+	add_hl_a
+	ld a, [hl]
+	ld hl, FirstTileNumberForActorTileset
+	add_hl_a
+	pop af
+	add [hl]
+ENDM
+
 ; A = First sprite tile to draw
 ; B = Attributes
 ; Draws actor DE
@@ -1394,6 +1411,8 @@ DrawActor_16x16:
 	; temp1 = Sprite tile (left half)
 	; temp2 = Sprite tile (right half)
 	; temp3 = Attributes
+
+	offset_tile_number_by_sprite_tileset_placement
 
 	; Store the tile numbers and attributes to use
 	ldh [temp1], a
