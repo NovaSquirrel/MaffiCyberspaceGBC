@@ -63,7 +63,7 @@ DEF actor_unused3= 15  ; %1111
 ; 2 Knockback timer
 ; 3 Knockback sign X
 ; 4 Knockback sign Y
-; 5
+; 5 ID from map
 ; 6
 ; 7
 ; 8
@@ -76,11 +76,12 @@ DEF actor_unused3= 15  ; %1111
 ; F
 ;
 
-DEF actor_health           = 256 + 0
-DEF actor_damaged_by_id    = 256 + 1
-DEF actor_knockback_timer  = 256 + 2
-DEF actor_knockback_sign_x = 256 + 3
-DEF actor_knockback_sign_y = 256 + 4
+DEF actor_id_from_map      = 256 + 0
+DEF actor_health           = 256 + 1
+DEF actor_damaged_by_id    = 256 + 2
+DEF actor_knockback_timer  = 256 + 3
+DEF actor_knockback_sign_x = 256 + 4
+DEF actor_knockback_sign_y = 256 + 5
 
 ; Actor states
 DEF ACTOR_STATE_NORMAL = 0
@@ -90,6 +91,7 @@ DEF ACTOR_STATE_KNOCKBACK = 1
 DEF ACTOR_SIZE  = 16
 DEF ACTOR_COUNT = 16
 DEF PLAYER_PROJECTILE_COUNT = 7
+DEF MAX_ACTORS_IN_LEVEL_DATA = 11
 
 DEF PLAYER_COLLISION_WIDTH = 10
 DEF ENEMY_COLLISION_WIDTH = 10

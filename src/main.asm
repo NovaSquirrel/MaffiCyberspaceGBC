@@ -419,7 +419,9 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 	inc d
 	call SwapSixteenBytes
 
-	; Show a hint if the player stands still for long enough
+	; .--------------------------------------------------------------
+	; | Show a hint if the player stands still for long enough
+	; '--------------------------------------------------------------
 	ld a, [PlayerNotMovingTimer]
 	cp 90
 	jp c, .NoHint
@@ -577,6 +579,54 @@ AfterVblankForDMG: ; The DMG-specific code will jump here once it's done
 			ld a, l
 			ldh [OAMWrite], a
 	.NoHint:
+
+	; .--------------------------------------------------------------
+	; | Check for actors placed onto the map that should get spawned in
+	; '--------------------------------------------------------------
+	ld a, BANK(SpawnActorsWhileScrolling)
+	ld [rROMB0], a
+
+	ld a, [DoUpdateRow]
+	rlca
+	jr c, .NoSpawnScrollRow
+		rrca
+		srl a
+		ld d, a
+		inc a
+		ld e, a
+
+		ldh a, [CameraX+1]
+		or a
+		jr z, :+
+			dec a
+		:
+		ld b, a
+		add 12
+		ld c, a
+
+		call SpawnActorsWhileScrolling ; B: X1, C: X2+1, D: Y1, E: Y2+1
+	.NoSpawnScrollRow:
+
+	ld a, [DoUpdateColumn]
+	rlca
+	jr c, .NoSpawnScrollColumn
+		rrca
+		srl a
+		ld b, a
+		inc a
+		ld c, a
+		
+		ldh a, [CameraY+1]
+		or a
+		jr z, :+
+			dec a
+		:
+		ld d, a
+		add 12
+		ld e, a
+
+		call SpawnActorsWhileScrolling ; B: X1, C: X2+1, D: Y1, E: Y2+1
+	.NoSpawnScrollColumn:
 
 	; CPU usage check
 ;	ld h, HIGH(OamBuffer)
@@ -839,7 +889,7 @@ SpawnEnemy:
 	switch_hl_to_field actor_type, actor_pyl
 	ld [hl], $80   ; actor_pyl
 	inc l
-	ldh a, [temp2] ; actor_plh
+	ldh a, [temp2] ; actor_pyh
 	ld [hl+], a
 	ld [hl], $80   ; actor_pxl
 	inc l

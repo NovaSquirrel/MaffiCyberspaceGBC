@@ -167,6 +167,9 @@ ActorExtra::
 PlayerProjectiles::
 	ds ACTOR_SIZE * PLAYER_PROJECTILE_COUNT
 PlayerProjectilesEnd::
+ActorsInLevelData_XY::   ds MAX_ACTORS_IN_LEVEL_DATA*2 ; X,Y, ...
+ActorsInLevelData_Type:: ds MAX_ACTORS_IN_LEVEL_DATA*2 ; Type,Variable, ...
+	ASSERT LOW(ActorsInLevelData_XY) != 0 ; Relying on the first entry not being at 0, because that would mean ambiguity between whether an actor's actor_id_from_map is not set or if it's the first entry
 	ENDU
 
 SECTION "OAM Data", WRAM0, ALIGN[8]
